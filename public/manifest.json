@@ -1,0 +1,28 @@
+{
+    "name": "FolderlyAI — Academic Organizer",
+    "short_name": "FolderlyAI",
+    "description": "Your AI-powered academic life, organized. Manage tasks, courses, schedules, study sets, and more — with Gemini 2.0 Flash intelligence.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0D0F1A",
+    "theme_color": "#6C63FF",
+    "orientation": "any",
+    "categories": [
+        "education",
+        "productivity"
+    ],
+    "icons": [
+        {
+            "src": "/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

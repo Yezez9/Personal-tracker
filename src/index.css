@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    background-color: #F7F8FC;
+    color: #1A1A2E;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    /* PWA safe area for notched devices */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  .dark body,
+  body:is(.dark *) {
+    background-color: #0F0F1A;
+    color: #F1F1FF;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 10px;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: #3f3f5e;
+  }
+}
+
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .dark .glass {
+    background: rgba(26, 26, 46, 0.85);
+    border: 1px solid rgba(46, 46, 74, 0.5);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+  }
+
+  .dark .glass-strong {
+    background: rgba(26, 26, 46, 0.95);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+  }
+
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px -5px rgba(108, 99, 255, 0.15);
+  }
+
+  .dark .card-hover:hover {
+    box-shadow: 0 8px 25px -5px rgba(124, 115, 255, 0.2);
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, #6C63FF 0%, #7C73FF 50%, #FF6584 100%);
+  }
+
+  .gradient-accent {
+    background: linear-gradient(135deg, #43D8A0 0%, #6C63FF 100%);
+  }
+
+  .gradient-warm {
+    background: linear-gradient(135deg, #FF6584 0%, #FF9F43 100%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #6C63FF, #FF6584);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .priority-high {
+    @apply bg-red-500/10 text-red-500 border border-red-500/20;
+  }
+
+  .priority-medium {
+    @apply bg-yellow-500/10 text-yellow-500 border border-yellow-500/20;
+  }
+
+  .priority-low {
+    @apply bg-green-500/10 text-green-500 border border-green-500/20;
+  }
+
+  .btn-primary {
+    @apply bg-primary-light text-white px-4 py-2 rounded-xl font-medium hover:opacity-90 active:scale-95 transition-all duration-200 shadow-md shadow-primary-light/20;
+  }
+
+  .dark .btn-primary {
+    @apply bg-primary-dark shadow-primary-dark/20;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 rounded-xl font-medium transition-all duration-200 hover:bg-gray-100 active:scale-95;
+  }
+
+  .dark .btn-ghost {
+    @apply hover:bg-white/5;
+  }
+
+  .btn-danger {
+    @apply bg-red-500/10 text-red-500 px-4 py-2 rounded-xl font-medium hover:bg-red-500/20 active:scale-95 transition-all duration-200;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary-light/30 focus:border-primary-light transition-all duration-200 text-sm;
+  }
+
+  .dark .input-field {
+    @apply border-border-dark bg-surface2-dark text-txt-dark focus:ring-primary-dark/30 focus:border-primary-dark;
+  }
+
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer;
+  }
+
+  .nav-item:hover {
+    @apply bg-gray-100;
+  }
+
+  .dark .nav-item:hover {
+    @apply bg-white/5;
+  }
+
+  .nav-item.active {
+    @apply bg-primary-light/10 text-primary-light;
+  }
+
+  .dark .nav-item.active {
+    @apply bg-primary-dark/10 text-primary-dark;
+  }
+}
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+}
