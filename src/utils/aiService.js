@@ -137,20 +137,41 @@ function buildFullDataJSON(context) {
     };
 }
 
-// ─── Daily Briefing (uses Gemini for quick single-shot) ─────────────
-export async function generateDailyBriefing(todos, schedule, profile) {
+// ─── Daily Briefing (Groq LLaMA 3.3 70B — fresh every load) ─────────
+export async function generateDailyBriefing(context) {
+    const { todos = [], schedule = [], profile = {}, courses = [], studySets = [], countdowns = [], bookmarks = [] } = context;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
 
-    if (getApiKey()) {
-        const context = buildFullDataJSON({ todos, schedule, profile });
-        const prompt = `You are an AI academic assistant. Generate a brief, friendly daily briefing (2-4 sentences max). Be specific about their tasks and schedule. Use emoji sparingly.\n\nStudent data:\n${JSON.stringify(context, null, 2)}\n\nGenerate a personalized daily briefing:`;
-        const result = await callGemini(prompt);
+    // Build full live data JSON
+    const liveData = buildFullDataJSON(context);
+
+    const systemPrompt = `You are a personal AI assistant for a student. You have their full data:
+
+${JSON.stringify(liveData, null, 2)}
+
+Generate a short, warm, natural daily briefing (3-5 sentences). Follow these rules:
+- Greet them by name and time of day (it is currently ${today.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} on ${dayName}).
+- Tell them what's happening today — tasks due, classes, deadlines.
+- Then look AHEAD at their upcoming week and proactively suggest what they should work on, even if they have nothing today.
+- If a countdown event is within 7 days, remind them to prepare.
+- If a course has no tasks but a study set exists, suggest reviewing it.
+- If they have free time today, suggest using it for a specific subject.
+- Be conversational, warm, slightly witty — like a knowledgeable friend, not a robot.
+- Use emoji naturally but not excessively (1-2 max).
+- Never give a generic response — always reference their ACTUAL data.
+- Keep it concise — no more than 5 sentences.`;
+
+    if (GROQ_API_KEY) {
+        const result = await callGroq([
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: 'Generate my daily briefing for right now.' }
+        ]);
         if (result) return result;
     }
 
-    // Local fallback
+    // Local fallback if Groq is unavailable
     const todayTasks = todos.filter(t => t.dueDate === todayStr && t.status !== 'completed');
     const overdueTasks = todos.filter(t => t.dueDate < todayStr && t.status !== 'completed');
     const upcomingTasks = todos.filter(t => {

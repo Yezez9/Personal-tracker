@@ -8,7 +8,7 @@ import {
 
 export default function Dashboard() {
     const { state, dispatch } = useApp();
-    const { profile, todos, schedule, courses, studySets } = state;
+    const { profile, todos, schedule, courses, studySets, countdowns, bookmarks } = state;
     const [briefing, setBriefing] = useState('');
     const [editingCard, setEditingCard] = useState(false);
 
@@ -16,11 +16,11 @@ export default function Dashboard() {
 
     useEffect(() => {
         setBriefingLoading(true);
-        generateDailyBriefing(todos, schedule, profile).then(text => {
+        generateDailyBriefing({ todos, schedule, profile, courses, studySets, countdowns, bookmarks }).then(text => {
             setBriefing(text);
             setBriefingLoading(false);
         });
-    }, [todos, schedule, profile]);
+    }, []);
 
     const todayStr = new Date().toISOString().split('T')[0];
     const dayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
@@ -104,7 +104,7 @@ export default function Dashboard() {
                             <Sparkles size={16} className="text-primary-light dark:text-primary-dark" />
                         </div>
                         <h3 className="text-sm font-semibold dark:text-txt-dark">AI Daily Briefing</h3>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary-light/10 text-primary-light dark:text-primary-dark font-medium">LLaMA 3.3 70B</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary-light/10 text-primary-light dark:text-primary-dark font-medium">Powered by LLaMA 3.3 70B</span>
                     </div>
                     {briefingLoading ? (
                         <div className="space-y-2 animate-pulse">
