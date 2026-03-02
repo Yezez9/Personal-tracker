@@ -231,6 +231,113 @@ export function generatePriorityScore(task, allTodos) {
     return { score, reason };
 }
 
+// ─── AI Smart Task Recommendations (Groq LLaMA 3.3 70B) ────────────
+export async function generateSmartRecommendations(context) {
+    const { todos = [], courses = [], countdowns = [], studySets = [] } = context;
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    // Only pending tasks (skip completed and in_progress)
+    const pendingTasks = todos.filter(t => t.status === 'pending');
+    if (pendingTasks.length === 0) return [];
+
+    const taskData = pendingTasks.map(t => ({
+        id: t.id,
+        title: t.title,
+        description: t.description || '',
+        dueDate: t.dueDate || 'no due date',
+        priority: t.priority || 'medium',
+        tags: t.tags || [],
+        subtodos: t.subtodos?.length || 0,
+        course: courses.find(c => c.id === t.courseId)?.name || null,
+        aiPriorityScore: t.aiPriorityScore || null,
+    }));
+
+    const countdownData = (countdowns || []).map(c => ({
+        title: c.title,
+        targetDate: c.date || c.targetDate,
+        daysUntil: Math.ceil((new Date(c.date || c.targetDate) - today) / (1000 * 60 * 60 * 24)),
+    }));
+
+    if (GROQ_API_KEY) {
+        const systemPrompt = `You are a smart task prioritization AI for a student. Analyze their pending tasks and return ONLY a JSON array of the top 3-5 most important tasks to work on right now.
+
+IMPORTANT RANKING RULES (use a point system):
+- Task TYPE weight: exam (50 pts) > project (40 pts) > assignment (30 pts) > lab (25 pts) > reading (15 pts) > other (10 pts). Determine type from tags, title, or description.
+- Due date proximity: overdue (+40), due today (+35), tomorrow (+25), within 3 days (+15), within 7 days (+5)
+- Manual priority: high (+15), medium (+0), low (-10)
+- Upcoming countdowns: if a countdown event is within 7 days and relates to a task's course, +10 bonus
+- Task complexity: if subtodo count > 3 or description > 100 chars, +5 (complex tasks need early starts)
+
+CRITICAL: An exam due in 7 days ranks HIGHER than a low-priority assignment due tomorrow. Think about CONSEQUENCES, not just deadlines.
+CRITICAL: Only include tasks with status "pending". Skip anything in_progress.
+
+Today's date: ${todayStr}
+
+Student's pending tasks:
+${JSON.stringify(taskData, null, 2)}
+
+Upcoming countdowns:
+${JSON.stringify(countdownData, null, 2)}
+
+Return ONLY valid JSON array (no markdown, no explanation) in this exact format:
+[{"taskId":"<actual task id>","recommendationReason":"<why this task matters most — mention task type, due date, consequences>","taskType":"exam|assignment|project|reading|lab|other","urgencyLevel":"high|medium|low","suggestedAction":"<specific next step>","suggestedDeadline":"<when to start/finish>"}]`;
+
+        try {
+            const result = await callGroq([
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: 'Rank my tasks and give me smart recommendations.' }
+            ]);
+            if (result) {
+                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                const parsed = JSON.parse(cleaned);
+                if (Array.isArray(parsed)) return parsed;
+            }
+        } catch (err) {
+            console.warn('[SmartRecs] Parse error, using fallback:', err.message);
+        }
+    }
+
+    // Local fallback — basic sorting by type weight + due date
+    const typeWeights = { exam: 50, project: 40, assignment: 30, lab: 25, reading: 15, other: 10 };
+    const getTaskType = (task) => {
+        const text = `${task.title} ${task.description || ''} ${(task.tags || []).join(' ')}`.toLowerCase();
+        if (text.includes('exam') || text.includes('midterm') || text.includes('final') || text.includes('quiz') || text.includes('test')) return 'exam';
+        if (text.includes('project')) return 'project';
+        if (text.includes('assignment') || text.includes('homework') || text.includes('problem set')) return 'assignment';
+        if (text.includes('lab')) return 'lab';
+        if (text.includes('read') || text.includes('chapter')) return 'reading';
+        return 'other';
+    };
+
+    return pendingTasks
+        .map(t => {
+            const taskType = getTaskType(t);
+            const daysUntil = t.dueDate ? Math.ceil((new Date(t.dueDate) - today) / (1000 * 60 * 60 * 24)) : 999;
+            let score = typeWeights[taskType] || 10;
+            if (daysUntil < 0) score += 40;
+            else if (daysUntil === 0) score += 35;
+            else if (daysUntil === 1) score += 25;
+            else if (daysUntil <= 3) score += 15;
+            else if (daysUntil <= 7) score += 5;
+            if (t.priority === 'high') score += 15;
+            if (t.priority === 'low') score -= 10;
+
+            return {
+                taskId: t.id,
+                recommendationReason: daysUntil < 0 ? `This ${taskType} is overdue — handle it immediately.` : `${taskType.charAt(0).toUpperCase() + taskType.slice(1)} due in ${daysUntil} day${daysUntil !== 1 ? 's' : ''} — ${t.priority} priority.`,
+                taskType,
+                urgencyLevel: daysUntil <= 1 ? 'high' : daysUntil <= 3 ? 'medium' : 'low',
+                suggestedAction: `Start working on "${t.title}"`,
+                suggestedDeadline: daysUntil <= 0 ? 'Overdue — do it now' : `${daysUntil} day${daysUntil !== 1 ? 's' : ''} left`,
+                _score: score,
+            };
+        })
+        .sort((a, b) => b._score - a._score)
+        .slice(0, 5)
+        .map(({ _score, ...rest }) => rest);
+}
+
 // ─── Natural Language Task Parsing (Gemini) ─────────────────────────
 export async function parseNaturalLanguageTask(input, courses) {
     if (getApiKey()) {

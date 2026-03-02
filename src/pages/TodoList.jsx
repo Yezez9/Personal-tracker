@@ -288,7 +288,7 @@ export default function TodoList() {
         // Filter
         if (filter === 'today') items = items.filter(t => t.dueDate === todayStr);
         else if (filter === 'upcoming') items = items.filter(t => t.dueDate > todayStr && t.status !== 'completed');
-        else if (filter === 'overdue') items = items.filter(t => t.dueDate < todayStr && t.status !== 'completed');
+        else if (filter === 'pending') items = items.filter(t => t.status === 'pending');
         else if (filter === 'in_progress') items = items.filter(t => t.status === 'in_progress');
         else if (filter === 'completed') items = items.filter(t => t.status === 'completed');
 
@@ -344,13 +344,13 @@ export default function TodoList() {
 
             {/* Filters */}
             <div className="flex flex-wrap gap-2">
-                {['all', 'today', 'upcoming', 'in_progress', 'overdue', 'completed'].map(f => (
+                {['all', 'today', 'upcoming', 'in_progress', 'pending', 'completed'].map(f => (
                     <button key={f} onClick={() => setFilter(f)}
                         className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${filter === f
-                            ? f === 'in_progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-primary-light/10 text-primary-light dark:bg-primary-dark/10 dark:text-primary-dark'
+                            ? f === 'in_progress' ? 'bg-amber-500/10 text-amber-500' : f === 'pending' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary-light/10 text-primary-light dark:bg-primary-dark/10 dark:text-primary-dark'
                             : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
                             }`}>
-                        {f === 'in_progress' ? '⏳ In Progress' : f.charAt(0).toUpperCase() + f.slice(1)}
+                        {f === 'in_progress' ? '⏳ In Progress' : f === 'pending' ? '✨ Pending' : f.charAt(0).toUpperCase() + f.slice(1)}
                     </button>
                 ))}
             </div>

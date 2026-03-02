@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import storage from '../utils/storage';
 import { useApp } from '../contexts/AppContext';
 import { formatDate, formatRelativeDate, isToday, getDateGroup } from '../utils/helpers';
-import { generateDailyBriefing } from '../utils/aiService';
+import { generateDailyBriefing, generateSmartRecommendations } from '../utils/aiService';
 import {
     CheckCircle2, Clock, AlertTriangle, TrendingUp, Calendar, BookOpen, Sparkles, ChevronRight, Edit3
 } from 'lucide-react';
@@ -12,6 +12,8 @@ export default function Dashboard() {
     const { profile, todos, schedule, courses, studySets, countdowns, bookmarks } = state;
     const [briefing, setBriefing] = useState('');
     const [editingCard, setEditingCard] = useState(false);
+    const [smartRecs, setSmartRecs] = useState([]);
+    const [recsLoading, setRecsLoading] = useState(true);
 
     const [briefingLoading, setBriefingLoading] = useState(true);
 
@@ -28,6 +30,24 @@ export default function Dashboard() {
 
     const todayTasks = todos.filter(t => t.dueDate === todayStr && t.status !== 'completed');
     const overdueTasks = todos.filter(t => t.dueDate < todayStr && t.status !== 'completed');
+
+    // Fetch smart recommendations
+    useEffect(() => {
+        setRecsLoading(true);
+        generateSmartRecommendations({ todos, courses, countdowns: state.countdowns || [], studySets }).then(recs => {
+            setSmartRecs(recs);
+            setRecsLoading(false);
+        });
+    }, [todos]);
+
+    // Upcoming in 3 days
+    const upcoming3Days = todos
+        .filter(t => {
+            if (t.status === 'completed') return false;
+            const diff = Math.ceil((new Date(t.dueDate) - new Date(todayStr)) / (1000 * 60 * 60 * 24));
+            return diff >= 0 && diff <= 3;
+        })
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
     const completedThisWeek = useMemo(() => {
         const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
         return todos.filter(t => t.status === 'completed').length;
@@ -150,15 +170,15 @@ export default function Dashboard() {
                     <p className="text-xs text-gray-500 dark:text-gray-400">Tasks due today</p>
                 </div>
 
-                {/* Overdue */}
+                {/* AI Picks */}
                 <div className="rounded-2xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-border-dark p-4 card-hover">
                     <div className="flex items-center justify-between mb-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${overdueTasks.length > 0 ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
-                            <AlertTriangle size={20} className={overdueTasks.length > 0 ? 'text-red-500' : 'text-green-500'} />
+                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                            <Sparkles size={20} className="text-purple-500" />
                         </div>
-                        <span className={`text-2xl font-bold ${overdueTasks.length > 0 ? 'text-red-500' : 'dark:text-txt-dark'}`}>{overdueTasks.length}</span>
+                        <span className="text-2xl font-bold dark:text-txt-dark">{smartRecs.length}</span>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Overdue tasks</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">AI Picks</p>
                 </div>
 
                 {/* Completed this week */}
@@ -220,30 +240,76 @@ export default function Dashboard() {
                     )}
                 </div>
 
-                {/* Upcoming Deadlines */}
+                {/* Smart Recommendations */}
+                <div className="rounded-2xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-border-dark p-5 shadow-sm">
+                    <h3 className="text-sm font-semibold mb-1 dark:text-txt-dark flex items-center gap-2">
+                        <Sparkles size={16} className="text-purple-500" />
+                        Smart Recommendations
+                    </h3>
+                    <p className="text-[10px] text-gray-400 mb-4">Suggested by AI — based on type, deadline & priority</p>
+                    {recsLoading ? (
+                        <div className="space-y-3 animate-pulse">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="h-16 bg-gray-100 dark:bg-gray-700/30 rounded-xl" />
+                            ))}
+                        </div>
+                    ) : smartRecs.length > 0 ? smartRecs.map((rec, i) => {
+                        const urgencyColors = { high: 'border-red-500/30 bg-red-500/5', medium: 'border-orange-500/30 bg-orange-500/5', low: 'border-blue-500/30 bg-blue-500/5' };
+                        const urgencyBadge = { high: 'bg-red-500/10 text-red-500', medium: 'bg-orange-500/10 text-orange-500', low: 'bg-blue-500/10 text-blue-500' };
+                        const typeBadge = { exam: '📝', assignment: '📄', project: '🏗️', reading: '📖', lab: '🔬', other: '📌' };
+                        const task = todos.find(t => t.id === rec.taskId);
+                        return (
+                            <div key={rec.taskId || i} className={`rounded-xl border p-3 mb-2 last:mb-0 ${urgencyColors[rec.urgencyLevel] || urgencyColors.low}`}>
+                                <div className="flex items-start justify-between gap-2 mb-1">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="text-sm">{typeBadge[rec.taskType] || '📌'}</span>
+                                        <span className="text-sm font-semibold dark:text-txt-dark truncate">{task?.title || rec.suggestedAction}</span>
+                                    </div>
+                                    <div className="flex gap-1 flex-shrink-0">
+                                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${urgencyBadge[rec.urgencyLevel]}`}>{rec.urgencyLevel}</span>
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium">{rec.taskType}</span>
+                                    </div>
+                                </div>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">{rec.recommendationReason}</p>
+                                <p className="text-[10px] text-purple-500 dark:text-purple-400 font-medium mt-1">💡 {rec.suggestedAction} · {rec.suggestedDeadline}</p>
+                            </div>
+                        );
+                    }) : (
+                        <p className="text-sm text-gray-400 text-center py-4">No pending tasks to recommend 🎯</p>
+                    )}
+                </div>
+
+                {/* Upcoming in 3 Days */}
                 <div className="rounded-2xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-border-dark p-5 shadow-sm">
                     <h3 className="text-sm font-semibold mb-4 dark:text-txt-dark flex items-center gap-2">
                         <Clock size={16} className="text-secondary-light dark:text-secondary-dark" />
-                        Upcoming Deadlines
+                        Upcoming in 3 Days ⏳
                     </h3>
-                    {upcomingDeadlines.length > 0 ? upcomingDeadlines.map(task => (
-                        <div key={task.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 dark:border-border-dark/50 last:border-0">
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${task.priority === 'high' ? 'bg-red-500' : task.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'}`} />
-                                <span className="text-sm dark:text-gray-300 truncate">{task.title}</span>
+                    {upcoming3Days.length > 0 ? upcoming3Days.map(task => {
+                        const daysLeft = Math.ceil((new Date(task.dueDate) - new Date(todayStr)) / (1000 * 60 * 60 * 24));
+                        const pillColor = daysLeft <= 1 ? 'bg-red-500/10 text-red-500' : daysLeft === 2 ? 'bg-orange-500/10 text-orange-500' : 'bg-yellow-500/10 text-yellow-500';
+                        const pillText = daysLeft === 0 ? 'Today' : daysLeft === 1 ? 'Tomorrow' : `${daysLeft} days left`;
+                        const typeText = (tags => {
+                            const t = (tags || []).join(' ').toLowerCase();
+                            if (t.includes('exam')) return 'exam';
+                            if (t.includes('project')) return 'project';
+                            if (t.includes('assignment') || t.includes('homework')) return 'assignment';
+                            if (t.includes('lab')) return 'lab';
+                            if (t.includes('read')) return 'reading';
+                            return null;
+                        })(task.tags);
+                        return (
+                            <div key={task.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 dark:border-border-dark/50 last:border-0">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${task.priority === 'high' ? 'bg-red-500' : task.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                                    <span className="text-sm dark:text-gray-300 truncate">{task.title}</span>
+                                    {typeText && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium flex-shrink-0">{typeText}</span>}
+                                </div>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ml-2 ${pillColor}`}>{pillText}</span>
                             </div>
-                            <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{formatRelativeDate(task.dueDate)}</span>
-                        </div>
-                    )) : (
-                        <p className="text-sm text-gray-400 text-center py-4">No upcoming deadlines 🎯</p>
-                    )}
-                    {todos.filter(t => t.status !== 'completed').length > 3 && (
-                        <button
-                            onClick={() => dispatch({ type: 'SET_PAGE', payload: 'todos' })}
-                            className="mt-3 text-xs text-primary-light dark:text-primary-dark font-medium flex items-center gap-1 hover:gap-2 transition-all"
-                        >
-                            View all tasks <ChevronRight size={14} />
-                        </button>
+                        );
+                    }) : (
+                        <p className="text-sm text-gray-400 text-center py-4">No deadlines in the next 3 days 🎉</p>
                     )}
                 </div>
             </div>
