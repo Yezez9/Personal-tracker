@@ -104,7 +104,7 @@ export default function Dashboard() {
                             <Sparkles size={16} className="text-primary-light dark:text-primary-dark" />
                         </div>
                         <h3 className="text-sm font-semibold dark:text-txt-dark">AI Daily Briefing</h3>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary-light/10 text-primary-light dark:text-primary-dark font-medium">Gemini 2.0 Flash</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary-light/10 text-primary-light dark:text-primary-dark font-medium">LLaMA 3.3 70B</span>
                     </div>
                     {briefingLoading ? (
                         <div className="space-y-2 animate-pulse">
