@@ -1,5 +1,5 @@
-// FolderlyAI Service Worker — Caches app shell for offline access
-const CACHE_NAME = 'folderlyai-v1';
+// TaskTrack Service Worker — Caches app shell for offline access
+const CACHE_NAME = 'tasktrack-v1';
 
 const APP_SHELL = [
     '/',

@@ -169,7 +169,9 @@ function TaskItem({ task, courses, dispatch, expanded, onToggle }) {
     return (
         <div className={`rounded-xl border transition-all duration-200 ${task.status === 'completed'
             ? 'bg-gray-50 dark:bg-surface2-dark/50 border-gray-100 dark:border-border-dark/50 opacity-60'
-            : 'bg-white dark:bg-surface-dark border-gray-200 dark:border-border-dark card-hover'
+            : task.status === 'in_progress'
+                ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/30 card-hover'
+                : 'bg-white dark:bg-surface-dark border-gray-200 dark:border-border-dark card-hover'
             }`}>
             <div className="p-4 flex items-start gap-3">
                 {/* Checkbox */}
@@ -177,15 +179,18 @@ function TaskItem({ task, courses, dispatch, expanded, onToggle }) {
                     onClick={() => dispatch({ type: 'TOGGLE_TODO_STATUS', payload: task.id })}
                     className={`w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.status === 'completed'
                         ? 'bg-green-500 border-green-500 text-white'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-primary-light dark:hover:border-primary-dark'
+                        : task.status === 'in_progress'
+                            ? 'bg-amber-500 border-amber-500 text-white'
+                            : 'border-gray-300 dark:border-gray-600 hover:border-primary-light dark:hover:border-primary-dark'
                         }`}
                 >
                     {task.status === 'completed' && <Check size={12} />}
+                    {task.status === 'in_progress' && <span className="text-[10px]">🔄</span>}
                 </button>
 
                 <div className="flex-1 min-w-0" onClick={onToggle}>
                     <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-sm font-medium cursor-pointer ${task.status === 'completed' ? 'line-through text-gray-400' : 'dark:text-txt-dark'}`}>
+                        <span className={`text-sm font-medium cursor-pointer ${task.status === 'completed' ? 'line-through text-gray-400' : task.status === 'in_progress' ? 'text-amber-700 dark:text-amber-400' : 'dark:text-txt-dark'}`}>
                             {task.title}
                         </span>
                         {/* Priority badge */}
@@ -284,6 +289,7 @@ export default function TodoList() {
         if (filter === 'today') items = items.filter(t => t.dueDate === todayStr);
         else if (filter === 'upcoming') items = items.filter(t => t.dueDate > todayStr && t.status !== 'completed');
         else if (filter === 'overdue') items = items.filter(t => t.dueDate < todayStr && t.status !== 'completed');
+        else if (filter === 'in_progress') items = items.filter(t => t.status === 'in_progress');
         else if (filter === 'completed') items = items.filter(t => t.status === 'completed');
 
         // Course filter
@@ -302,22 +308,23 @@ export default function TodoList() {
 
     // Group by date
     const grouped = useMemo(() => {
-        if (filter === 'completed' || sortBy !== 'dueDate') return { _all: filteredTodos };
+        if (filter === 'completed' || filter === 'in_progress' || sortBy !== 'dueDate') return { _all: filteredTodos };
         const groups = {};
         filteredTodos.forEach(t => {
-            const g = t.status === 'completed' ? 'COMPLETED' : getDateGroup(t.dueDate);
+            const g = t.status === 'completed' ? 'COMPLETED' : t.status === 'in_progress' ? 'IN PROGRESS' : getDateGroup(t.dueDate);
             if (!groups[g]) groups[g] = [];
             groups[g].push(t);
         });
         return groups;
     }, [filteredTodos, filter, sortBy]);
 
-    const groupOrder = ['OVERDUE', 'TODAY', 'TOMORROW', 'THIS WEEK', 'LATER', 'COMPLETED', '_all'];
+    const groupOrder = ['OVERDUE', 'TODAY', 'TOMORROW', 'THIS WEEK', 'IN PROGRESS', 'LATER', 'COMPLETED', '_all'];
     const groupColors = {
         OVERDUE: 'text-red-500',
         TODAY: 'text-primary-light dark:text-primary-dark',
         TOMORROW: 'text-yellow-500',
         'THIS WEEK': 'text-accent-light dark:text-accent-dark',
+        'IN PROGRESS': 'text-amber-500',
         LATER: 'text-gray-400',
         COMPLETED: 'text-green-500',
     };
@@ -337,13 +344,13 @@ export default function TodoList() {
 
             {/* Filters */}
             <div className="flex flex-wrap gap-2">
-                {['all', 'today', 'upcoming', 'overdue', 'completed'].map(f => (
+                {['all', 'today', 'upcoming', 'in_progress', 'overdue', 'completed'].map(f => (
                     <button key={f} onClick={() => setFilter(f)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-medium capitalize transition-all ${filter === f
-                            ? 'bg-primary-light/10 text-primary-light dark:bg-primary-dark/10 dark:text-primary-dark'
+                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${filter === f
+                            ? f === 'in_progress' ? 'bg-amber-500/10 text-amber-500' : 'bg-primary-light/10 text-primary-light dark:bg-primary-dark/10 dark:text-primary-dark'
                             : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
                             }`}>
-                        {f}
+                        {f === 'in_progress' ? '⏳ In Progress' : f.charAt(0).toUpperCase() + f.slice(1)}
                     </button>
                 ))}
             </div>

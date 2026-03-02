@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTheme } from '../contexts/ThemeContext';
 import storage from '../utils/storage';
-import { User, Download, Upload, Trash2, Moon, Sun, Key, ExternalLink, CheckCircle2, XCircle } from 'lucide-react';
+import { User, Download, Upload, Trash2, Moon, Sun } from 'lucide-react';
 
 export default function Settings() {
     const { state, dispatch } = useApp();
@@ -10,9 +10,6 @@ export default function Settings() {
     const { profile } = state;
     const [form, setForm] = useState(profile || { name: '', studentId: '', program: '', school: '', avatar: '' });
     const fileRef = useRef(null);
-    const [apiKey, setApiKey] = useState(storage.get('gemini_api_key') || '');
-    const [apiKeyStatus, setApiKeyStatus] = useState(null); // null | 'testing' | 'valid' | 'invalid'
-    const [apiKeySaved, setApiKeySaved] = useState(false);
 
     const saveProfile = () => {
         dispatch({ type: 'SET_PROFILE', payload: form });
@@ -31,7 +28,7 @@ export default function Settings() {
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = `folderlyai-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.href = url; a.download = `tasktrack-backup-${new Date().toISOString().split('T')[0]}.json`;
         a.click(); URL.revokeObjectURL(url);
     };
 
@@ -82,45 +79,6 @@ export default function Settings() {
                 <button onClick={saveProfile} className="btn-primary mt-4">Save Profile</button>
             </div>
 
-            {/* Gemini API Key */}
-            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
-                <h2 className="text-sm font-semibold dark:text-txt-dark mb-1 flex items-center gap-2"><Key size={16} className="text-primary-light dark:text-primary-dark" /> AI Integration</h2>
-                <p className="text-[11px] text-gray-400 mb-4">Powered by <strong>Google Gemini 2.0 Flash</strong>. Get a free API key from <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className="text-primary-light dark:text-primary-dark hover:underline inline-flex items-center gap-0.5">aistudio.google.com <ExternalLink size={10} /></a></p>
-                <div className="flex gap-2 mb-3">
-                    <input
-                        type="password"
-                        placeholder="Enter your Gemini API key"
-                        value={apiKey}
-                        onChange={e => { setApiKey(e.target.value); setApiKeySaved(false); setApiKeyStatus(null); }}
-                        className="input-field flex-1 font-mono text-xs"
-                    />
-                    <button onClick={() => {
-                        storage.set('gemini_api_key', apiKey.trim());
-                        setApiKeySaved(true);
-                        setTimeout(() => setApiKeySaved(false), 2000);
-                    }} className="btn-primary text-xs px-4">{apiKeySaved ? '✓ Saved' : 'Save'}</button>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={async () => {
-                        setApiKeyStatus('testing');
-                        try {
-                            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey.trim()}`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ contents: [{ parts: [{ text: 'Say "connected" in one word.' }] }] })
-                            });
-                            setApiKeyStatus(res.ok ? 'valid' : 'invalid');
-                        } catch { setApiKeyStatus('invalid'); }
-                    }} disabled={!apiKey.trim() || apiKeyStatus === 'testing'} className="text-xs font-medium text-primary-light dark:text-primary-dark hover:underline disabled:opacity-50">
-                        {apiKeyStatus === 'testing' ? 'Testing...' : 'Test Connection'}
-                    </button>
-                    {apiKeyStatus === 'valid' && <span className="text-xs text-green-500 flex items-center gap-1"><CheckCircle2 size={12} /> Connected</span>}
-                    {apiKeyStatus === 'invalid' && <span className="text-xs text-red-400 flex items-center gap-1"><XCircle size={12} /> Invalid key</span>}
-                    {apiKey.trim() && <button onClick={() => { setApiKey(''); storage.remove('gemini_api_key'); setApiKeyStatus(null); }} className="text-xs text-red-400 hover:underline ml-auto">Remove key</button>}
-                </div>
-                {!apiKey.trim() && <p className="text-[10px] text-gray-400 mt-2">Without an API key, AI features use local template-based responses instead of Gemini.</p>}
-            </div>
-
             {/* Theme */}
             <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
                 <h2 className="text-sm font-semibold dark:text-txt-dark mb-4">Appearance</h2>
@@ -162,7 +120,7 @@ export default function Settings() {
 
             {/* About */}
             <div className="text-center py-4">
-                <p className="text-xs text-gray-400">FolderlyAI v1.0 · Built with ❤️ for students</p>
+                <p className="text-xs text-gray-400">TaskTrack v1.0 · Built with ❤️ for students</p>
             </div>
         </div>
     );

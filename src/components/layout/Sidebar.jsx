@@ -1,4 +1,5 @@
 import React from 'react';
+import Logo from '../Logo';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useApp } from '../../contexts/AppContext';
 import {
@@ -28,12 +29,10 @@ export default function Sidebar({ collapsed, onToggle }) {
 
             {/* Logo */}
             <div className="p-4 flex items-center gap-3 border-b border-gray-100 dark:border-border-dark">
-                <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-bold text-lg">F</span>
-                </div>
+                <Logo size={40} className="flex-shrink-0" />
                 {!collapsed && (
                     <div className="animate-fade-in">
-                        <h1 className="text-lg font-bold text-gradient">FolderlyAI</h1>
+                        <h1 className="text-lg font-bold text-gradient">TaskTrack</h1>
                         <p className="text-[10px] text-gray-400 -mt-1">Academic Organizer</p>
                     </div>
                 )}

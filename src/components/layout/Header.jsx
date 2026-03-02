@@ -3,6 +3,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useApp } from '../../contexts/AppContext';
 import { Search, Bell, Moon, Sun, Menu, X } from 'lucide-react';
 import { searchItems } from '../../utils/helpers';
+import Logo from '../Logo';
 
 export default function Header({ onMenuToggle }) {
     const { darkMode, toggleDarkMode } = useTheme();
@@ -50,10 +51,8 @@ export default function Header({ onMenuToggle }) {
                         <Menu size={20} className="dark:text-gray-300" />
                     </button>
                     <div className="lg:hidden flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center">
-                            <span className="text-white font-bold text-xs">F</span>
-                        </div>
-                        <span className="font-bold text-sm text-gradient">FolderlyAI</span>
+                        <Logo size={28} />
+                        <span className="font-bold text-sm text-gradient">TaskTrack</span>
                     </div>
                 </div>
 

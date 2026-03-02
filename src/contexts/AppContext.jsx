@@ -74,9 +74,10 @@ function appReducer(state, action) {
         case 'DELETE_TODO':
             return { ...state, todos: state.todos.filter(t => t.id !== action.payload) };
         case 'TOGGLE_TODO_STATUS': {
+            const statusCycle = { pending: 'in_progress', in_progress: 'completed', completed: 'pending' };
             return {
                 ...state, todos: state.todos.map(t => t.id === action.payload
-                    ? { ...t, status: t.status === 'completed' ? 'pending' : 'completed' }
+                    ? { ...t, status: statusCycle[t.status] || 'pending' }
                     : t
                 )
             };

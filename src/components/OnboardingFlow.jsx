@@ -25,7 +25,7 @@ export default function OnboardingFlow() {
                     <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-light/20">
                         <Sparkles size={28} className="text-white" />
                     </div>
-                    <h1 className="text-2xl font-bold text-gradient">FolderlyAI</h1>
+                    <h1 className="text-2xl font-bold text-gradient">TaskTrack</h1>
                     <p className="text-sm text-gray-400 mt-1">Your AI-powered academic life, organized.</p>
                 </div>
 

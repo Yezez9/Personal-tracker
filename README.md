@@ -1,86 +1,110 @@
-# 📁 FolderlyAI — Academic Organizer
+# TaskTrack — Academic Organizer
 
-> Your AI-powered academic life, organized.
-
-A modern, feature-rich academic organizer PWA built with **React + Vite + Tailwind CSS**, powered by **Google Gemini 2.0 Flash** AI.
-
-## ✨ Features
-
-- 📊 **Dashboard** — Student ID card, AI daily briefing, stats, upcoming deadlines
-- ✅ **To-Do List** — Smart task management with AI priority scoring (0–100)
-- 📚 **Course Folders** — Color-coded course organization with files, links, notes
-- 📅 **Class Schedule** — Weekly timetable grid + list view
-- 🗓️ **Calendar** — Month view with task dots and day details
-- 🃏 **Study Sets** — 3D flip flashcards with mastery tracking + AI generation
-- 🔖 **Bookmarks** — Link manager with course tagging and search
-- ⏳ **Countdowns** — Live-ticking countdown timers
-- 🤖 **AI Assistant** — Chat-based VA powered by Gemini 2.0 Flash
-- ⚙️ **Settings** — Profile, theme, API key config, data export/import
-- 🌙 **Dark Mode** — Full dark theme with smooth transitions
-- 📱 **PWA** — Installable on mobile, works offline
-
-## 🚀 Quick Start
-
-```bash
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-```
-
-## 🔑 AI Setup (Optional)
-
-1. Get a free API key from [aistudio.google.com](https://aistudio.google.com)
-2. Open the app → **Settings** → **AI Integration**
-3. Paste your key and click **Save**
-
-Without a key, all AI features work with local template-based responses.
-
-## 📦 Deploy to Vercel
-
-1. Push this repo to GitHub
-2. Go to [vercel.com](https://vercel.com) → **New Project** → Import your repo
-3. Vercel auto-detects Vite — click **Deploy**
-4. Done! Your PWA is live and installable 🎉
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Framework | React 18 + Vite 6 |
-| Styling | Tailwind CSS 3 |
-| AI | Google Gemini 2.0 Flash |
-| State | useReducer + Context API |
-| Storage | localStorage |
-| Icons | lucide-react |
-| PWA | Service Worker + Web Manifest |
-
-## 📁 Project Structure
-
-```
-├── public/
-│   ├── icons/              # PWA icons (192×192, 512×512)
-│   ├── manifest.json       # PWA manifest
-│   └── service-worker.js   # Offline caching
-├── src/
-│   ├── components/         # Layout, AI Assistant, Install Prompt
-│   ├── contexts/           # AppContext, ThemeContext
-│   ├── pages/              # All feature pages
-│   └── utils/              # AI service, storage, helpers
-├── index.html              # Entry point
-├── vite.config.js          # Vite config
-├── tailwind.config.js      # Tailwind config
-├── vercel.json             # Vercel SPA routing
-└── package.json            # Dependencies & scripts
-```
+> AI-powered student organizer with task management, course organization, class schedule, study sets, and a conversational AI assistant powered by **Groq LLaMA 3.3 70B**.
 
 ---
 
-Built with ❤️ for students.
+## 🚀 Quick Start (Local Development)
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173)
+
+---
+
+## 🌐 One-Time Deployment Setup (Vercel + GitHub Auto-Deploy)
+
+Follow these steps **once** to set up automatic deployment. After this, every `git push` will update the live site automatically.
+
+### Step 1: Push to GitHub
+
+```bash
+# Initialize git (if not already done)
+git init
+git add .
+git commit -m "Initial commit"
+
+# Create repo on GitHub, then:
+git remote add origin https://github.com/YOUR_USERNAME/Personal-tracker.git
+git branch -M main
+git push -u origin main
+```
+
+### Step 2: Deploy on Vercel
+
+1. Go to [vercel.com](https://vercel.com) and sign in with GitHub
+2. Click **"Add New Project"** → **Import** your `Personal-tracker` repo
+3. Vercel auto-detects Vite — just click **Deploy**
+4. Wait ~60 seconds — your app is now live! 🎉
+
+### Step 3: Get Your Vercel Tokens
+
+You need 3 tokens for the GitHub Action auto-deploy:
+
+| Token | Where to find it |
+|-------|-----------------|
+| `VERCEL_TOKEN` | [vercel.com/account/tokens](https://vercel.com/account/tokens) → Create new token |
+| `VERCEL_ORG_ID` | [vercel.com/account](https://vercel.com/account) → Your **Account/Team ID** (in Settings → General) |
+| `VERCEL_PROJECT_ID` | Go to your project on Vercel → **Settings → General** → **Project ID** |
+
+### Step 4: Add Secrets to GitHub
+
+1. Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions**
+2. Click **"New repository secret"** and add all 3:
+   - `VERCEL_TOKEN` → paste your token
+   - `VERCEL_ORG_ID` → paste your org/account ID
+   - `VERCEL_PROJECT_ID` → paste your project ID
+
+### ✅ Done! Auto-Deploy is Now Active
+
+From this point forward, **every push to `main` triggers an automatic redeploy**.
+
+---
+
+## 📤 Pushing Updates (Every Time You Make Changes)
+
+After editing your code, run these 3 commands:
+
+```bash
+git add .
+git commit -m "describe what you changed"
+git push origin main
+```
+
+That's it! Within **30–60 seconds**, Vercel automatically:
+1. Detects the push
+2. Rebuilds the app
+3. Updates the live URL
+
+**Everyone using the link sees the latest version instantly.**
+
+---
+
+## 📱 Native Android App
+
+The built APK is included in the project. Users can download it directly from the web app, or you can build a fresh one:
+
+```bash
+npm run build
+npx cap sync
+cd android && ./gradlew assembleDebug
+```
+
+APK output: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18 + Tailwind CSS |
+| AI Chat | Groq LLaMA 3.3 70B |
+| AI Utilities | Google Gemini 2.0 Flash |
+| Build | Vite 6 |
+| Deploy | Vercel + GitHub Actions |
+| Native | Capacitor 6 (Android/iOS) |
+| Offline | Service Worker (PWA) |

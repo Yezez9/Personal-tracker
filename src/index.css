@@ -182,3 +182,50 @@
     transform-style: preserve-3d;
   }
 }
+
+/* ─── Capacitor / Native Mobile Enhancements ─────────────────────── */
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent rubber-banding on iOS in Capacitor */
+html {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Touch-friendly: all interactive elements min 44px */
+@media (max-width: 1023px) {
+
+  button,
+  a,
+  [role="button"],
+  input[type="checkbox"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Active press feedback for native feel */
+  button:active,
+  a:active,
+  [role="button"]:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+  }
+}
+
+/* Bottom nav safe area spacer */
+.pb-safe {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
