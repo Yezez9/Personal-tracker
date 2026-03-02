@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import storage from '../utils/storage';
 import { useApp } from '../contexts/AppContext';
 import { formatDate, formatRelativeDate, isToday, getDateGroup } from '../utils/helpers';
 import { generateDailyBriefing } from '../utils/aiService';
@@ -40,19 +41,38 @@ export default function Dashboard() {
     const todayClasses = schedule.filter(s => s.day === dayName);
     const nextClass = todayClasses.sort((a, b) => a.startTime.localeCompare(b.startTime))[0];
 
-    // Study streak (simplified: count consecutive days with completed tasks)
-    const streak = useMemo(() => {
-        let count = 0;
-        const today = new Date();
-        for (let i = 0; i < 30; i++) {
-            const d = new Date(today); d.setDate(d.getDate() - i);
-            const ds = d.toISOString().split('T')[0];
-            const hasActivity = todos.some(t => t.createdAt?.startsWith(ds) || (t.status === 'completed'));
-            if (hasActivity || i === 0) count++;
-            else break;
+    // Study streak — persistent, calendar-day based
+    const [streak, setStreak] = useState(1);
+    useEffect(() => {
+        const todayDate = new Date().toISOString().split('T')[0];
+        const streakData = storage.get('study_streak') || { lastOpenedDate: null, currentStreak: 0 };
+        const { lastOpenedDate, currentStreak } = streakData;
+
+        if (!lastOpenedDate) {
+            // First ever open
+            storage.set('study_streak', { lastOpenedDate: todayDate, currentStreak: 1 });
+            setStreak(1);
+        } else if (lastOpenedDate === todayDate) {
+            // Same day — do nothing
+            setStreak(currentStreak);
+        } else {
+            // Different day — count how many days apart
+            const last = new Date(lastOpenedDate + 'T00:00:00');
+            const now = new Date(todayDate + 'T00:00:00');
+            const diffDays = Math.round((now - last) / (1000 * 60 * 60 * 24));
+
+            if (diffDays === 1) {
+                // Exactly next day — increment
+                const newStreak = currentStreak + 1;
+                storage.set('study_streak', { lastOpenedDate: todayDate, currentStreak: newStreak });
+                setStreak(newStreak);
+            } else {
+                // 2+ days gap — reset
+                storage.set('study_streak', { lastOpenedDate: todayDate, currentStreak: 1 });
+                setStreak(1);
+            }
         }
-        return count;
-    }, [todos]);
+    }, []);
 
     const recentActivity = [...todos].sort((a, b) =>
         new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
@@ -160,7 +180,7 @@ export default function Dashboard() {
                         </div>
                         <span className="text-2xl font-bold dark:text-txt-dark">{streak}</span>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Day streak</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{streak} Day Streak</p>
                 </div>
             </div>
 
