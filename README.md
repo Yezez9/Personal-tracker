@@ -103,7 +103,6 @@ APK output: `android/app/build/outputs/apk/debug/app-debug.apk`
 |-------|-----------|
 | Frontend | React 18 + Tailwind CSS |
 | AI Chat | Groq LLaMA 3.3 70B |
-| AI Utilities | Google Gemini 2.0 Flash |
 | Build | Vite 6 |
 | Deploy | Vercel + GitHub Actions |
 | Native | Capacitor 6 (Android/iOS) |
