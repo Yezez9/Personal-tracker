@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { initializeNotifications } from './utils/notificationService';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AppProvider, useApp } from './contexts/AppContext';
 import Sidebar from './components/layout/Sidebar';
@@ -44,6 +45,16 @@ function AppContent() {
 
         // Rescore all tasks daily
         dispatch({ type: 'RESCORE_ALL_TODOS' });
+
+        // Initialize AI push notifications
+        initializeNotifications({
+            todos: state.todos,
+            schedule: state.schedule,
+            courses: state.courses,
+            profile: state.profile,
+            countdowns: state.countdowns || [],
+            studySets: state.studySets || [],
+        });
     }, []);
 
     const pages = {

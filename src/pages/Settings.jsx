@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useTheme } from '../contexts/ThemeContext';
 import storage from '../utils/storage';
-import { User, Download, Upload, Trash2, Moon, Sun } from 'lucide-react';
+import { getNotificationSettings, setNotificationSettings, requestNotificationPermission } from '../utils/notificationService';
+import { User, Download, Upload, Trash2, Moon, Sun, Bell, BellOff } from 'lucide-react';
 
 export default function Settings() {
     const { state, dispatch } = useApp();
@@ -10,6 +11,21 @@ export default function Settings() {
     const { profile } = state;
     const [form, setForm] = useState(profile || { name: '', studentId: '', program: '', school: '', avatar: '' });
     const fileRef = useRef(null);
+    const [notifSettings, setNotifSettings] = useState(getNotificationSettings());
+
+    const toggleNotifSetting = async (key) => {
+        // Request permission if enabling
+        if (!notifSettings[key]) {
+            const perm = await requestNotificationPermission();
+            if (perm !== 'granted') {
+                alert('Please allow notifications in your browser settings to enable this feature.');
+                return;
+            }
+        }
+        const updated = { ...notifSettings, [key]: !notifSettings[key] };
+        setNotifSettings(updated);
+        setNotificationSettings(updated);
+    };
 
     const saveProfile = () => {
         dispatch({ type: 'SET_PROFILE', payload: form });
@@ -95,6 +111,46 @@ export default function Settings() {
                             <span className="text-xs font-medium dark:text-gray-300">{opt.label}</span>
                         </button>
                     ))}
+                </div>
+            </div>
+
+            {/* Notifications */}
+            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
+                <h2 className="text-sm font-semibold dark:text-txt-dark mb-4 flex items-center gap-2">
+                    <Bell size={16} className="text-secondary-light dark:text-secondary-dark" /> Notifications
+                </h2>
+                <div className="space-y-4">
+                    {/* Daily Notifications Toggle */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium dark:text-txt-dark">Daily Notifications</p>
+                            <p className="text-[10px] text-gray-400">AI-generated reminders morning, afternoon & evening</p>
+                        </div>
+                        <button
+                            onClick={() => toggleNotifSetting('dailyNotifications')}
+                            className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifSettings.dailyNotifications ? 'bg-primary-light dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifSettings.dailyNotifications ? 'translate-x-5' : ''}`} />
+                        </button>
+                    </div>
+                    {/* Streak Reminder Toggle */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium dark:text-txt-dark">Streak Reminders</p>
+                            <p className="text-[10px] text-gray-400">🔥 Nightly reminder at 8 PM to keep your streak alive</p>
+                        </div>
+                        <button
+                            onClick={() => toggleNotifSetting('streakReminder')}
+                            className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifSettings.streakReminder ? 'bg-primary-light dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifSettings.streakReminder ? 'translate-x-5' : ''}`} />
+                        </button>
+                    </div>
+                    {Notification.permission !== 'granted' && (
+                        <p className="text-[10px] text-amber-500 flex items-center gap-1">
+                            <BellOff size={12} /> Browser notifications are currently blocked. Enable them in your browser settings.
+                        </p>
+                    )}
                 </div>
             </div>
 

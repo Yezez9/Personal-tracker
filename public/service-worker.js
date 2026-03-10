@@ -76,8 +76,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // For API calls (Gemini) — always go to network, don't cache
-    if (request.url.includes('generativelanguage.googleapis.com')) {
+    // For API calls (Gemini/Groq) — always go to network, don't cache
+    if (request.url.includes('generativelanguage.googleapis.com') || request.url.includes('api.groq.com')) {
         event.respondWith(fetch(request));
         return;
     }
@@ -85,5 +85,34 @@ self.addEventListener('fetch', (event) => {
     // Default — try network, fallback to cache
     event.respondWith(
         fetch(request).catch(() => caches.match(request))
+    );
+});
+
+// Push notification handler
+self.addEventListener('push', (event) => {
+    const data = event.data?.json() || {};
+    const title = data.title || 'TaskTrack';
+    const options = {
+        body: data.body || 'You have updates in TaskTrack!',
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-192x192.png',
+        vibrate: [100, 50, 100],
+        tag: data.tag || 'tasktrack-push',
+        renotify: true,
+        data: { url: '/' },
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Notification click — open or focus the app
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+            if (clients.length > 0) {
+                return clients[0].focus();
+            }
+            return self.clients.openWindow('/');
+        })
     );
 });
