@@ -89,11 +89,16 @@ The built APK is included in the project. Users can download it directly from th
 
 ```bash
 npm run build
-npx cap sync
+npx cap sync android
 cd android && ./gradlew assembleDebug
 ```
 
 APK output: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+> **⚠️ Important: Web vs Mobile Updates**
+>
+> - **Web app** — Updates automatically via Vercel on every `git push`. No action needed.
+> - **Mobile APK** — Must be **manually rebuilt** using the commands above and **reinstalled on your phone** each time new features are added. The APK does not auto-update.
 
 ---
 
