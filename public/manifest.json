@@ -1,7 +1,7 @@
 {
     "name": "TaskTrack — Academic Organizer",
     "short_name": "TaskTrack",
-    "description": "Your AI-powered academic life, organized. Manage tasks, courses, schedules, study sets, and more — with Gemini 2.0 Flash intelligence.",
+    "description": "Your AI-powered academic life, organized. Manage tasks, courses, schedules, study sets, and more — with LLaMA 3.3 70B intelligence.",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0D0F1A",

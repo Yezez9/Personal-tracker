@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { PRESET_COLORS, PRESET_EMOJIS, generateId } from '../utils/helpers';
-import { ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import Logo from './Logo';
 
 export default function OnboardingFlow() {
     const { dispatch } = useApp();
@@ -22,8 +23,8 @@ export default function OnboardingFlow() {
             <div className="w-full max-w-md">
                 {/* Logo */}
                 <div className="text-center mb-8 animate-fade-in">
-                    <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-light/20">
-                        <Sparkles size={28} className="text-white" />
+                    <div className="mx-auto mb-4">
+                        <Logo size={64} className="mx-auto drop-shadow-lg" />
                     </div>
                     <h1 className="text-2xl font-bold text-gradient">TaskTrack</h1>
                     <p className="text-sm text-gray-400 mt-1">Your AI-powered academic life, organized.</p>
