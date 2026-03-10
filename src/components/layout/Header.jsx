@@ -10,9 +10,11 @@ export default function Header({ onMenuToggle }) {
     const { state, dispatch } = useApp();
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
+    const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const notifRef = useRef(null);
     const searchRef = useRef(null);
+    const mobileSearchRef = useRef(null);
 
     const unreadCount = state.notifications.filter(n => !n.read).length;
 
@@ -28,6 +30,7 @@ export default function Header({ onMenuToggle }) {
         function handleClick(e) {
             if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifications(false);
             if (searchRef.current && !searchRef.current.contains(e.target)) { setShowSearch(false); setSearchQuery(''); }
+            if (mobileSearchRef.current && !mobileSearchRef.current.contains(e.target)) { setMobileSearchOpen(false); setSearchQuery(''); }
         }
         document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
@@ -40,13 +43,14 @@ export default function Header({ onMenuToggle }) {
         else if (result.type === 'studyset') dispatch({ type: 'SET_PAGE', payload: 'studysets' });
         setSearchQuery('');
         setShowSearch(false);
+        setMobileSearchOpen(false);
     };
 
     return (
         <header className="sticky top-0 z-30 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-b border-gray-200 dark:border-border-dark">
             <div className="flex items-center justify-between h-14 px-4">
                 {/* Left: menu + logo on mobile */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-shrink-0">
                     <button onClick={onMenuToggle} className="lg:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
                         <Menu size={20} className="dark:text-gray-300" />
                     </button>
@@ -56,8 +60,8 @@ export default function Header({ onMenuToggle }) {
                     </div>
                 </div>
 
-                {/* Center: Search */}
-                <div ref={searchRef} className="relative flex-1 max-w-md mx-4">
+                {/* Center: Search (desktop only) */}
+                <div ref={searchRef} className="relative flex-1 max-w-md mx-4 hidden lg:block">
                     <div className="relative">
                         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
@@ -86,8 +90,16 @@ export default function Header({ onMenuToggle }) {
                 </div>
 
                 {/* Right: actions */}
-                <div className="flex items-center gap-1">
-                    <button onClick={toggleDarkMode} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors lg:hidden">
+                <div className="flex items-center gap-1 flex-shrink-0">
+                    {/* Mobile search icon */}
+                    <button
+                        onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+                        className="lg:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                    >
+                        <Search size={18} className="dark:text-gray-300" />
+                    </button>
+
+                    <button onClick={toggleDarkMode} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
                         {darkMode ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} className="text-gray-500" />}
                     </button>
 
@@ -132,10 +144,10 @@ export default function Header({ onMenuToggle }) {
                         )}
                     </div>
 
-                    {/* Avatar */}
+                    {/* Avatar — 36px, responsive 30px on small screens */}
                     <button
                         onClick={() => dispatch({ type: 'SET_PAGE', payload: 'settings' })}
-                        className="ml-1 w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-white text-xs font-bold hover:opacity-90 transition-opacity"
+                        className="ml-2 w-9 h-9 min-w-[36px] min-h-[36px] max-[374px]:w-[30px] max-[374px]:h-[30px] max-[374px]:min-w-[30px] max-[374px]:min-h-[30px] rounded-full gradient-primary flex items-center justify-center text-white text-xs font-bold hover:opacity-90 transition-opacity flex-shrink-0"
                     >
                         {state.profile?.avatar ? (
                             <img src={state.profile.avatar} alt="" className="w-full h-full rounded-full object-cover" />
@@ -145,6 +157,41 @@ export default function Header({ onMenuToggle }) {
                     </button>
                 </div>
             </div>
+
+            {/* Mobile search bar — expands below header */}
+            {mobileSearchOpen && (
+                <div ref={mobileSearchRef} className="lg:hidden px-4 pb-3 animate-fade-in">
+                    <div className="relative">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search tasks, courses, bookmarks..."
+                            value={searchQuery}
+                            onChange={e => { setSearchQuery(e.target.value); setShowSearch(true); }}
+                            onFocus={() => setShowSearch(true)}
+                            autoFocus
+                            className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-100 dark:bg-surface2-dark border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light/30 dark:focus:ring-primary-dark/30 dark:text-txt-dark"
+                        />
+                        <button onClick={() => { setMobileSearchOpen(false); setSearchQuery(''); }} className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <X size={16} className="text-gray-400" />
+                        </button>
+                    </div>
+                    {searchResults.length > 0 && (
+                        <div className="mt-2 bg-white dark:bg-surface-dark rounded-xl shadow-lg border border-gray-200 dark:border-border-dark overflow-hidden">
+                            {searchResults.map((r, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => navigateToResult(r)}
+                                    className="w-full px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-white/5 flex items-center gap-3 text-sm transition-colors"
+                                >
+                                    <span className="text-[10px] uppercase font-bold text-gray-400 w-14">{r.type}</span>
+                                    <span className="dark:text-txt-dark truncate">{r.title || r.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </header>
     );
 }
