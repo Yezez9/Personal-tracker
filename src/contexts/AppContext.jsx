@@ -62,7 +62,8 @@ function appReducer(state, action) {
             return {
                 ...state, todos: state.todos.map(t => {
                     if (t.id === action.payload.id) {
-                        const updated = { ...t, ...action.payload };
+                        const updates = action.payload.updates || action.payload;
+                        const updated = { ...t, ...updates, id: t.id };
                         const { score, reason } = generatePriorityScore(updated, state.todos);
                         updated.aiPriorityScore = score;
                         updated.aiPriorityReason = reason;

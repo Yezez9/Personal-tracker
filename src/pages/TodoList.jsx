@@ -1,20 +1,35 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { getDateGroup, formatDate, formatTime, generateId, TAG_OPTIONS, PRESET_COLORS } from '../utils/helpers';
 import { parseNaturalLanguageTask } from '../utils/aiService';
 import {
-    Plus, Filter, SortAsc, ChevronDown, ChevronUp, Check, X, Sparkles, Trash2, Edit3, Clock, Tag
+    Plus, Filter, SortAsc, ChevronDown, ChevronUp, Check, X, Sparkles, Trash2, Edit3, Clock, Tag, AlertTriangle
 } from 'lucide-react';
 
-function AddTaskModal({ show, onClose, courses, dispatch }) {
-    const [mode, setMode] = useState('manual'); // manual | ai
+// ─── Unified Task Modal (Add + Edit) ────────────────────────────────
+function TaskModal({ show, onClose, courses, dispatch, editTask }) {
+    const isEdit = !!editTask;
+    const [mode, setMode] = useState('manual');
     const [aiInput, setAiInput] = useState('');
-    const [form, setForm] = useState({
-        title: '', course: '', dueDate: '', dueTime: '', priority: 'medium',
-        description: '', tags: [], subtodos: [],
-    });
+    const [form, setForm] = useState(
+        isEdit
+            ? {
+                title: editTask.title || '',
+                course: editTask.course || '',
+                dueDate: editTask.dueDate || '',
+                dueTime: editTask.dueTime || '',
+                priority: editTask.priority || 'medium',
+                description: editTask.description || '',
+                tags: editTask.tags || [],
+                subtodos: editTask.subtodos || [],
+                status: editTask.status || 'pending',
+            }
+            : { title: '', course: '', dueDate: '', dueTime: '', priority: 'medium', description: '', tags: [], subtodos: [], status: 'pending' }
+    );
     const [newSubtodo, setNewSubtodo] = useState('');
+    const [editingSubtodo, setEditingSubtodo] = useState(null);
     const [aiParsing, setAiParsing] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     if (!show) return null;
 
@@ -41,9 +56,19 @@ function AddTaskModal({ show, onClose, courses, dispatch }) {
 
     const handleSubmit = () => {
         if (!form.title.trim()) return;
-        dispatch({ type: 'ADD_TODO', payload: form });
+        if (isEdit) {
+            dispatch({ type: 'UPDATE_TODO', payload: { id: editTask.id, updates: form } });
+            // Rescore after edit
+            setTimeout(() => dispatch({ type: 'RESCORE_ALL_TODOS' }), 100);
+        } else {
+            dispatch({ type: 'ADD_TODO', payload: form });
+        }
         onClose();
-        setForm({ title: '', course: '', dueDate: '', dueTime: '', priority: 'medium', description: '', tags: [], subtodos: [] });
+    };
+
+    const handleDelete = () => {
+        dispatch({ type: 'DELETE_TODO', payload: editTask.id });
+        onClose();
     };
 
     return (
@@ -52,29 +77,31 @@ function AddTaskModal({ show, onClose, courses, dispatch }) {
             <div className="relative glass-strong rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
                 <div className="p-6">
                     <div className="flex items-center justify-between mb-5">
-                        <h2 className="text-lg font-bold dark:text-txt-dark">Add Task</h2>
+                        <h2 className="text-lg font-bold dark:text-txt-dark">{isEdit ? 'Edit Task' : 'Add Task'}</h2>
                         <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
                             <X size={18} className="dark:text-gray-400" />
                         </button>
                     </div>
 
-                    {/* Mode toggle */}
-                    <div className="flex gap-2 mb-5">
-                        <button
-                            onClick={() => setMode('manual')}
-                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium transition-all ${mode === 'manual' ? 'bg-primary-light/10 text-primary-light dark:bg-primary-dark/10 dark:text-primary-dark' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}
-                        >
-                            Manual Entry
-                        </button>
-                        <button
-                            onClick={() => setMode('ai')}
-                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${mode === 'ai' ? 'bg-primary-light/10 text-primary-light dark:bg-primary-dark/10 dark:text-primary-dark' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}
-                        >
-                            <Sparkles size={12} /> AI Fill
-                        </button>
-                    </div>
+                    {/* Mode toggle (only for Add) */}
+                    {!isEdit && (
+                        <div className="flex gap-2 mb-5">
+                            <button
+                                onClick={() => setMode('manual')}
+                                className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium transition-all ${mode === 'manual' ? 'bg-primary-light/10 text-primary-light dark:bg-primary-dark/10 dark:text-primary-dark' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+                            >
+                                Manual Entry
+                            </button>
+                            <button
+                                onClick={() => setMode('ai')}
+                                className={`flex-1 py-2 px-3 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 ${mode === 'ai' ? 'bg-primary-light/10 text-primary-light dark:bg-primary-dark/10 dark:text-primary-dark' : 'text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}
+                            >
+                                <Sparkles size={12} /> AI Fill
+                            </button>
+                        </div>
+                    )}
 
-                    {mode === 'ai' ? (
+                    {mode === 'ai' && !isEdit ? (
                         <div className="space-y-3">
                             <textarea
                                 placeholder='e.g., "Submit math homework by Friday, high priority"'
@@ -115,6 +142,24 @@ function AddTaskModal({ show, onClose, courses, dispatch }) {
                                 </div>
                             </div>
 
+                            {/* Status (only in edit mode) */}
+                            {isEdit && (
+                                <div>
+                                    <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">Status</label>
+                                    <div className="flex gap-2">
+                                        {['pending', 'in_progress', 'completed'].map(s => (
+                                            <button key={s} onClick={() => setForm(prev => ({ ...prev, status: s }))}
+                                                className={`flex-1 py-2 rounded-xl text-xs font-medium transition-all ${form.status === s
+                                                    ? s === 'completed' ? 'bg-green-500 text-white' : s === 'in_progress' ? 'bg-amber-500 text-white' : 'bg-primary-light text-white dark:bg-primary-dark'
+                                                    : 'bg-gray-100 dark:bg-surface2-dark text-gray-500 dark:text-gray-400'
+                                                    }`}>
+                                                {s === 'in_progress' ? 'In Progress' : s === 'pending' ? 'Pending' : 'Completed'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <textarea placeholder="Description (optional)" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} className="input-field h-20 resize-none" />
 
                             {/* Tags */}
@@ -138,8 +183,26 @@ function AddTaskModal({ show, onClose, courses, dispatch }) {
                                 <label className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 block">Sub-tasks</label>
                                 {form.subtodos.map(st => (
                                     <div key={st.id} className="flex items-center gap-2 py-1">
-                                        <span className="text-sm dark:text-gray-300">• {st.title}</span>
-                                        <button onClick={() => setForm(p => ({ ...p, subtodos: p.subtodos.filter(s => s.id !== st.id) }))} className="text-gray-300 hover:text-red-400"><X size={12} /></button>
+                                        {editingSubtodo === st.id ? (
+                                            <input
+                                                autoFocus
+                                                value={st.title}
+                                                onChange={e => setForm(p => ({ ...p, subtodos: p.subtodos.map(s => s.id === st.id ? { ...s, title: e.target.value } : s) }))}
+                                                onBlur={() => setEditingSubtodo(null)}
+                                                onKeyDown={e => e.key === 'Enter' && setEditingSubtodo(null)}
+                                                className="input-field flex-1 text-sm py-1"
+                                            />
+                                        ) : (
+                                            <span
+                                                className="text-sm dark:text-gray-300 flex-1 cursor-pointer hover:text-primary-light dark:hover:text-primary-dark"
+                                                onClick={() => setEditingSubtodo(st.id)}
+                                            >
+                                                • {st.title}
+                                            </span>
+                                        )}
+                                        <button onClick={() => setForm(p => ({ ...p, subtodos: p.subtodos.filter(s => s.id !== st.id) }))} className="text-gray-300 hover:text-red-400">
+                                            <X size={12} />
+                                        </button>
                                     </div>
                                 ))}
                                 <div className="flex gap-2">
@@ -149,132 +212,240 @@ function AddTaskModal({ show, onClose, courses, dispatch }) {
                                 </div>
                             </div>
 
-                            <button onClick={handleSubmit} disabled={!form.title.trim()} className="btn-primary w-full disabled:opacity-50">
-                                Add Task
+                            {/* Action buttons */}
+                            <div className="flex gap-3">
+                                {isEdit && (
+                                    <button
+                                        onClick={() => setShowDeleteConfirm(true)}
+                                        className="px-4 py-2.5 rounded-xl text-sm font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all flex items-center gap-2"
+                                    >
+                                        <Trash2 size={14} /> Delete
+                                    </button>
+                                )}
+                                <button onClick={handleSubmit} disabled={!form.title.trim()} className="btn-primary flex-1 disabled:opacity-50">
+                                    {isEdit ? 'Save Changes' : 'Add Task'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Delete confirmation dialog */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setShowDeleteConfirm(false)} />
+                    <div className="relative bg-white dark:bg-surface-dark rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scale-in">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                                <AlertTriangle size={20} className="text-red-500" />
+                            </div>
+                            <h3 className="text-base font-bold dark:text-txt-dark">Delete Task?</h3>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Are you sure you want to delete this task? This cannot be undone.</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-gray-100 dark:bg-surface2-dark text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
+                                Cancel
+                            </button>
+                            <button onClick={handleDelete} className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-red-500 text-white hover:bg-red-600 transition-all">
+                                Delete
                             </button>
                         </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function TaskItem({ task, courses, dispatch, expanded, onToggle }) {
-    const course = courses.find(c => c.id === task.course);
-    const subtodoProgress = task.subtodos?.length > 0
-        ? Math.round((task.subtodos.filter(s => s.done).length / task.subtodos.length) * 100)
-        : null;
-
-    return (
-        <div className={`rounded-xl border transition-all duration-200 ${task.status === 'completed'
-            ? 'bg-gray-50 dark:bg-surface2-dark/50 border-gray-100 dark:border-border-dark/50 opacity-60'
-            : task.status === 'in_progress'
-                ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/30 card-hover'
-                : 'bg-white dark:bg-surface-dark border-gray-200 dark:border-border-dark card-hover'
-            }`}>
-            <div className="p-4 flex items-start gap-3">
-                {/* Checkbox */}
-                <button
-                    onClick={() => dispatch({ type: 'TOGGLE_TODO_STATUS', payload: task.id })}
-                    className={`w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.status === 'completed'
-                        ? 'bg-green-500 border-green-500 text-white'
-                        : task.status === 'in_progress'
-                            ? 'bg-amber-500 border-amber-500 text-white'
-                            : 'border-gray-300 dark:border-gray-600 hover:border-primary-light dark:hover:border-primary-dark'
-                        }`}
-                >
-                    {task.status === 'completed' && <Check size={12} />}
-                    {task.status === 'in_progress' && <span className="text-[10px]">🔄</span>}
-                </button>
-
-                <div className="flex-1 min-w-0" onClick={onToggle}>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-sm font-medium cursor-pointer ${task.status === 'completed' ? 'line-through text-gray-400' : task.status === 'in_progress' ? 'text-amber-700 dark:text-amber-400' : 'dark:text-txt-dark'}`}>
-                            {task.title}
-                        </span>
-                        {/* Priority badge */}
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium capitalize priority-${task.priority}`}>
-                            {task.priority}
-                        </span>
-                        {/* AI Score */}
-                        {task.aiPriorityScore > 0 && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold ${task.aiPriorityScore >= 75 ? 'bg-red-500/10 text-red-500' : task.aiPriorityScore >= 50 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-500'}`}
-                                title={task.aiPriorityReason}>
-                                AI:{task.aiPriorityScore}
-                            </span>
-                        )}
                     </div>
-
-                    <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        {course && (
-                            <span className="text-[11px] font-medium" style={{ color: course.color }}>{course.icon} {course.name}</span>
-                        )}
-                        {task.dueDate && (
-                            <span className="text-[11px] text-gray-400 flex items-center gap-1">
-                                <Clock size={10} /> {formatDate(task.dueDate)} {task.dueTime ? formatTime(task.dueTime) : ''}
-                            </span>
-                        )}
-                        {task.tags?.map(tag => (
-                            <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-surface2-dark text-gray-500 dark:text-gray-400">{tag}</span>
-                        ))}
-                    </div>
-
-                    {subtodoProgress !== null && (
-                        <div className="mt-2 flex items-center gap-2">
-                            <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full bg-gradient-to-r from-primary-light to-accent-light transition-all duration-300" style={{ width: `${subtodoProgress}%` }} />
-                            </div>
-                            <span className="text-[10px] text-gray-400">{subtodoProgress}%</span>
-                        </div>
-                    )}
-                </div>
-
-                <button onClick={onToggle} className="p-1 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
-                    {expanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                </button>
-            </div>
-
-            {/* Expanded content */}
-            {expanded && (
-                <div className="px-4 pb-4 border-t border-gray-50 dark:border-border-dark/50 pt-3 animate-fade-in">
-                    {task.description && <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{task.description}</p>}
-
-                    {task.aiPriorityReason && (
-                        <div className="text-xs text-gray-400 italic mb-3 flex items-start gap-1.5">
-                            <Sparkles size={12} className="text-primary-light dark:text-primary-dark flex-shrink-0 mt-0.5" />
-                            {task.aiPriorityReason}
-                        </div>
-                    )}
-
-                    {task.subtodos?.length > 0 && (
-                        <div className="space-y-1.5 mb-3">
-                            {task.subtodos.map(st => (
-                                <label key={st.id} className="flex items-center gap-2 cursor-pointer group">
-                                    <input
-                                        type="checkbox" checked={st.done}
-                                        onChange={() => dispatch({ type: 'TOGGLE_SUBTODO', payload: { todoId: task.id, subtodoId: st.id } })}
-                                        className="w-3.5 h-3.5 rounded border-gray-300 text-primary-light focus:ring-primary-light/30"
-                                    />
-                                    <span className={`text-sm ${st.done ? 'line-through text-gray-400' : 'dark:text-gray-300'}`}>{st.title}</span>
-                                </label>
-                            ))}
-                        </div>
-                    )}
-
-                    <button onClick={() => dispatch({ type: 'DELETE_TODO', payload: task.id })} className="text-xs text-red-400 hover:text-red-500 flex items-center gap-1 transition-colors">
-                        <Trash2 size={12} /> Delete task
-                    </button>
                 </div>
             )}
         </div>
     );
 }
 
+// ─── Task Item with Edit button + Swipe Actions ─────────────────────
+function TaskItem({ task, courses, dispatch, expanded, onToggle, onEdit }) {
+    const course = courses.find(c => c.id === task.course);
+    const subtodoProgress = task.subtodos?.length > 0
+        ? Math.round((task.subtodos.filter(s => s.done).length / task.subtodos.length) * 100)
+        : null;
+    const touchStartX = useRef(0);
+    const touchDeltaX = useRef(0);
+    const [swipeOffset, setSwipeOffset] = useState(0);
+    const cardRef = useRef(null);
+
+    const handleTouchStart = (e) => {
+        touchStartX.current = e.touches[0].clientX;
+        touchDeltaX.current = 0;
+    };
+
+    const handleTouchMove = (e) => {
+        const delta = e.touches[0].clientX - touchStartX.current;
+        touchDeltaX.current = delta;
+        if (delta < 0) {
+            setSwipeOffset(Math.max(-130, delta));
+        } else if (swipeOffset < 0) {
+            setSwipeOffset(Math.min(0, swipeOffset + delta));
+        }
+    };
+
+    const handleTouchEnd = () => {
+        if (touchDeltaX.current < -60) {
+            setSwipeOffset(-130);
+        } else {
+            setSwipeOffset(0);
+        }
+    };
+
+    return (
+        <div className="relative overflow-hidden rounded-xl">
+            {/* Swipe reveal actions (behind the card) */}
+            <div className="absolute right-0 top-0 bottom-0 flex items-stretch z-0">
+                <button
+                    onClick={() => { onEdit(task); setSwipeOffset(0); }}
+                    className="w-[65px] flex items-center justify-center bg-blue-500 text-white"
+                >
+                    <div className="flex flex-col items-center gap-0.5">
+                        <Edit3 size={16} />
+                        <span className="text-[10px] font-medium">Edit</span>
+                    </div>
+                </button>
+                <button
+                    onClick={() => { dispatch({ type: 'DELETE_TODO', payload: task.id }); setSwipeOffset(0); }}
+                    className="w-[65px] flex items-center justify-center bg-red-500 text-white"
+                >
+                    <div className="flex flex-col items-center gap-0.5">
+                        <Trash2 size={16} />
+                        <span className="text-[10px] font-medium">Delete</span>
+                    </div>
+                </button>
+            </div>
+
+            {/* Main card (slides left on swipe) */}
+            <div
+                ref={cardRef}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 || swipeOffset === -130 ? 'transform 0.25s ease' : 'none' }}
+                className={`relative z-10 border transition-all duration-200 ${task.status === 'completed'
+                    ? 'bg-gray-50 dark:bg-surface2-dark/50 border-gray-100 dark:border-border-dark/50 opacity-60'
+                    : task.status === 'in_progress'
+                        ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/30 card-hover'
+                        : 'bg-white dark:bg-surface-dark border-gray-200 dark:border-border-dark card-hover'
+                    }`}>
+                <div className="p-4 flex items-start gap-3">
+                    {/* Checkbox */}
+                    <button
+                        onClick={() => dispatch({ type: 'TOGGLE_TODO_STATUS', payload: task.id })}
+                        className={`w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${task.status === 'completed'
+                            ? 'bg-green-500 border-green-500 text-white'
+                            : task.status === 'in_progress'
+                                ? 'bg-amber-500 border-amber-500 text-white'
+                                : 'border-gray-300 dark:border-gray-600 hover:border-primary-light dark:hover:border-primary-dark'
+                            }`}
+                    >
+                        {task.status === 'completed' && <Check size={12} />}
+                        {task.status === 'in_progress' && <span className="text-[10px]">🔄</span>}
+                    </button>
+
+                    <div className="flex-1 min-w-0" onClick={onToggle}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-sm font-medium cursor-pointer ${task.status === 'completed' ? 'line-through text-gray-400' : task.status === 'in_progress' ? 'text-amber-700 dark:text-amber-400' : 'dark:text-txt-dark'}`}>
+                                {task.title}
+                            </span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium capitalize priority-${task.priority}`}>
+                                {task.priority}
+                            </span>
+                            {task.aiPriorityScore > 0 && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold ${task.aiPriorityScore >= 75 ? 'bg-red-500/10 text-red-500' : task.aiPriorityScore >= 50 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-500'}`}
+                                    title={task.aiPriorityReason}>
+                                    AI:{task.aiPriorityScore}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                            {course && (
+                                <span className="text-[11px] font-medium" style={{ color: course.color }}>{course.icon} {course.name}</span>
+                            )}
+                            {task.dueDate && (
+                                <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                                    <Clock size={10} /> {formatDate(task.dueDate)} {task.dueTime ? formatTime(task.dueTime) : ''}
+                                </span>
+                            )}
+                            {task.tags?.map(tag => (
+                                <span key={tag} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-surface2-dark text-gray-500 dark:text-gray-400">{tag}</span>
+                            ))}
+                        </div>
+
+                        {subtodoProgress !== null && (
+                            <div className="mt-2 flex items-center gap-2">
+                                <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full bg-gradient-to-r from-primary-light to-accent-light transition-all duration-300" style={{ width: `${subtodoProgress}%` }} />
+                                </div>
+                                <span className="text-[10px] text-gray-400">{subtodoProgress}%</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Edit button (always visible) */}
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+                        className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex-shrink-0"
+                        title="Edit task"
+                    >
+                        <Edit3 size={14} className="text-gray-400 hover:text-primary-light dark:hover:text-primary-dark" />
+                    </button>
+
+                    <button onClick={onToggle} className="p-1 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                        {expanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                    </button>
+                </div>
+
+                {/* Expanded content */}
+                {expanded && (
+                    <div className="px-4 pb-4 border-t border-gray-50 dark:border-border-dark/50 pt-3 animate-fade-in">
+                        {task.description && <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{task.description}</p>}
+
+                        {task.aiPriorityReason && (
+                            <div className="text-xs text-gray-400 italic mb-3 flex items-start gap-1.5">
+                                <Sparkles size={12} className="text-primary-light dark:text-primary-dark flex-shrink-0 mt-0.5" />
+                                {task.aiPriorityReason}
+                            </div>
+                        )}
+
+                        {task.subtodos?.length > 0 && (
+                            <div className="space-y-1.5 mb-3">
+                                {task.subtodos.map(st => (
+                                    <label key={st.id} className="flex items-center gap-2 cursor-pointer group">
+                                        <input
+                                            type="checkbox" checked={st.done}
+                                            onChange={() => dispatch({ type: 'TOGGLE_SUBTODO', payload: { todoId: task.id, subtodoId: st.id } })}
+                                            className="w-3.5 h-3.5 rounded border-gray-300 text-primary-light focus:ring-primary-light/30"
+                                        />
+                                        <span className={`text-sm ${st.done ? 'line-through text-gray-400' : 'dark:text-gray-300'}`}>{st.title}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button onClick={() => onEdit(task)} className="text-xs text-primary-light dark:text-primary-dark hover:underline flex items-center gap-1 transition-colors">
+                                <Edit3 size={12} /> Edit task
+                            </button>
+                            <button onClick={() => dispatch({ type: 'DELETE_TODO', payload: task.id })} className="text-xs text-red-400 hover:text-red-500 flex items-center gap-1 transition-colors">
+                                <Trash2 size={12} /> Delete task
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ─── Main TodoList ──────────────────────────────────────────────────
 export default function TodoList() {
     const { state, dispatch } = useApp();
     const { todos, courses } = state;
-    const [showAddModal, setShowAddModal] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [editingTask, setEditingTask] = useState(null);
     const [filter, setFilter] = useState('all');
     const [courseFilter, setCourseFilter] = useState('');
     const [sortBy, setSortBy] = useState('dueDate');
@@ -285,17 +456,14 @@ export default function TodoList() {
     const filteredTodos = useMemo(() => {
         let items = [...todos];
 
-        // Filter
         if (filter === 'today') items = items.filter(t => t.dueDate === todayStr);
         else if (filter === 'upcoming') items = items.filter(t => t.dueDate > todayStr && t.status !== 'completed');
         else if (filter === 'pending') items = items.filter(t => t.status === 'pending');
         else if (filter === 'in_progress') items = items.filter(t => t.status === 'in_progress');
         else if (filter === 'completed') items = items.filter(t => t.status === 'completed');
 
-        // Course filter
         if (courseFilter) items = items.filter(t => t.course === courseFilter);
 
-        // Sort
         if (sortBy === 'dueDate') items.sort((a, b) => (a.dueDate || 'z').localeCompare(b.dueDate || 'z'));
         else if (sortBy === 'aiPriority') items.sort((a, b) => (b.aiPriorityScore || 0) - (a.aiPriorityScore || 0));
         else if (sortBy === 'priority') {
@@ -306,7 +474,6 @@ export default function TodoList() {
         return items;
     }, [todos, filter, courseFilter, sortBy, todayStr]);
 
-    // Group by date
     const grouped = useMemo(() => {
         if (filter === 'completed' || filter === 'in_progress' || sortBy !== 'dueDate') return { _all: filteredTodos };
         const groups = {};
@@ -329,15 +496,18 @@ export default function TodoList() {
         COMPLETED: 'text-green-500',
     };
 
+    const openAdd = () => { setEditingTask(null); setShowModal(true); };
+    const openEdit = (task) => { setEditingTask(task); setShowModal(true); };
+    const closeModal = () => { setEditingTask(null); setShowModal(false); };
+
     return (
         <div className="space-y-4 animate-fade-in">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold dark:text-txt-dark">To-Do List</h1>
                     <p className="text-sm text-gray-400">{todos.filter(t => t.status !== 'completed').length} active tasks</p>
                 </div>
-                <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+                <button onClick={openAdd} className="btn-primary flex items-center gap-2">
                     <Plus size={16} /> Add Task
                 </button>
             </div>
@@ -390,6 +560,7 @@ export default function TodoList() {
                                 dispatch={dispatch}
                                 expanded={expandedTask === task.id}
                                 onToggle={() => setExpandedTask(expandedTask === task.id ? null : task.id)}
+                                onEdit={openEdit}
                             />
                         ))}
                     </div>
@@ -402,7 +573,14 @@ export default function TodoList() {
                 </div>
             )}
 
-            <AddTaskModal show={showAddModal} onClose={() => setShowAddModal(false)} courses={courses} dispatch={dispatch} />
+            <TaskModal
+                show={showModal}
+                onClose={closeModal}
+                courses={courses}
+                dispatch={dispatch}
+                editTask={editingTask}
+                key={editingTask?.id || 'new'}
+            />
         </div>
     );
 }
