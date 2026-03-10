@@ -3,7 +3,8 @@ import { useApp } from '../contexts/AppContext';
 import { useTheme } from '../contexts/ThemeContext';
 import storage from '../utils/storage';
 import { getNotificationSettings, setNotificationSettings, requestNotificationPermission } from '../utils/notificationService';
-import { User, Download, Upload, Trash2, Moon, Sun, Bell, BellOff } from 'lucide-react';
+import { getCoinWallet, getLevel, getStreakMultiplier, LEVELS } from '../utils/coinService';
+import { User, Download, Upload, Trash2, Moon, Sun, Bell, BellOff, Trophy } from 'lucide-react';
 
 export default function Settings() {
     const { state, dispatch } = useApp();
@@ -154,7 +155,71 @@ export default function Settings() {
                 </div>
             </div>
 
-            {/* Data Management */}
+            {/* Rewards & Gamification */}
+            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
+                <h2 className="text-sm font-semibold dark:text-txt-dark mb-4 flex items-center gap-2">
+                    <Trophy size={16} className="text-yellow-500" /> Rewards & Gamification
+                </h2>
+                {(() => {
+                    const wallet = getCoinWallet();
+                    const level = getLevel(wallet.totalCoins);
+                    const { multiplier, label } = getStreakMultiplier();
+                    const nextLevel = LEVELS.find(l => l.min > wallet.totalCoins);
+                    const progress = nextLevel ? ((wallet.totalCoins - level.min) / (nextLevel.min - level.min)) * 100 : 100;
+                    return (
+                        <div className="space-y-4">
+                            {/* Stats */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="rounded-xl bg-yellow-500/10 p-3 text-center">
+                                    <p className="text-2xl font-black text-yellow-500">🪙 {wallet.totalCoins}</p>
+                                    <p className="text-[10px] text-gray-400 mt-0.5">Total Coins</p>
+                                </div>
+                                <div className="rounded-xl bg-primary-light/10 dark:bg-primary-dark/10 p-3 text-center">
+                                    <p className="text-2xl font-black text-primary-light dark:text-primary-dark">🪙 {wallet.weeklyCoins || 0}</p>
+                                    <p className="text-[10px] text-gray-400 mt-0.5">This Week</p>
+                                </div>
+                            </div>
+                            {/* Level */}
+                            <div className="rounded-xl bg-gray-50 dark:bg-surface2-dark p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-semibold dark:text-txt-dark">{level.badge} {level.name}</span>
+                                    {nextLevel && <span className="text-[10px] text-gray-400">{nextLevel.min - wallet.totalCoins} coins to {nextLevel.name}</span>}
+                                </div>
+                                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                    <div className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-yellow-500 transition-all duration-500" style={{ width: `${Math.min(100, progress)}%` }} />
+                                </div>
+                                <div className="flex justify-between mt-1.5">
+                                    {LEVELS.map(l => (
+                                        <span key={l.name} className={`text-[9px] ${wallet.totalCoins >= l.min ? 'text-yellow-500 font-bold' : 'text-gray-400'}`} title={l.name}>{l.badge}</span>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* Streak multiplier */}
+                            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 dark:bg-surface2-dark">
+                                <span className="text-sm dark:text-txt-dark">🔥 Streak Multiplier</span>
+                                <span className={`text-sm font-bold ${multiplier > 1 ? 'text-green-500' : 'text-gray-400'}`}>{label}</span>
+                            </div>
+                            {/* History */}
+                            {wallet.history?.length > 0 && (
+                                <div>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Recent Earnings</p>
+                                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                        {wallet.history.slice(0, 10).map((h, i) => (
+                                            <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5">
+                                                <div className="min-w-0">
+                                                    <p className="text-xs dark:text-txt-dark truncate">{h.task}</p>
+                                                    <p className="text-[10px] text-gray-400">{h.date} {h.reason && `• ${h.reason}`}</p>
+                                                </div>
+                                                <span className="text-xs font-bold text-yellow-500 flex-shrink-0 ml-2">+{h.coins} 🪙</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
+            </div>
             <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
                 <h2 className="text-sm font-semibold dark:text-txt-dark mb-4">Data Management</h2>
                 <div className="space-y-3">

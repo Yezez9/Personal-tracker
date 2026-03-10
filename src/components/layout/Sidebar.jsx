@@ -2,6 +2,7 @@ import React from 'react';
 import Logo from '../Logo';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useApp } from '../../contexts/AppContext';
+import { getCoinWallet, getLevel } from '../../utils/coinService';
 import {
     Home, CheckSquare, FolderOpen, CalendarDays, Calendar,
     BookOpen, Bookmark, Timer, Bot, Settings, Moon, Sun, LogOut
@@ -22,6 +23,8 @@ const navItems = [
 export default function Sidebar({ collapsed, onToggle }) {
     const { darkMode, toggleDarkMode } = useTheme();
     const { state, dispatch } = useApp();
+    const wallet = getCoinWallet();
+    const level = getLevel(wallet.totalCoins);
 
     return (
         <aside className={`fixed left-0 top-0 h-full z-40 bg-white dark:bg-surface-dark border-r border-gray-200 dark:border-border-dark transition-all duration-300 flex flex-col
@@ -51,8 +54,13 @@ export default function Sidebar({ collapsed, onToggle }) {
                         </div>
                         <div className="min-w-0">
                             <p className="text-xs font-semibold truncate dark:text-txt-dark">{state.profile.name}</p>
-                            <p className="text-[10px] text-gray-400 truncate">{state.profile.program || state.profile.school}</p>
+                            <p className="text-[10px] text-gray-400 truncate">{level.badge} {level.name}</p>
                         </div>
+                    </div>
+                    <div className="mt-2 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-yellow-500/10">
+                        <span className="text-xs">🪙</span>
+                        <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">{wallet.totalCoins}</span>
+                        <span className="text-[9px] text-gray-400 ml-auto">coins</span>
                     </div>
                 </div>
             )}

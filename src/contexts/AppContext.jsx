@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import storage from '../utils/storage';
 import { generateId } from '../utils/helpers';
 import { generatePriorityScore } from '../utils/aiService';
+import { scoreTaskCoins, calculateCompletionCoins, addCoins } from '../utils/coinService';
 
 const AppContext = createContext();
 
@@ -51,11 +52,17 @@ function appReducer(state, action) {
                 tags: [],
                 aiPriorityScore: 0,
                 aiPriorityReason: '',
+                coinReward: null,
                 ...action.payload,
             };
             const { score, reason } = generatePriorityScore(newTodo, state.todos);
             newTodo.aiPriorityScore = score;
             newTodo.aiPriorityReason = reason;
+            // Score coins async (won't block)
+            scoreTaskCoins(newTodo, state.courses, state.todos).then(coinData => {
+                newTodo.coinReward = coinData;
+                storage.set('todos', [...state.todos, newTodo]);
+            });
             return { ...state, todos: [...state.todos, newTodo] };
         }
         case 'UPDATE_TODO':
@@ -77,10 +84,18 @@ function appReducer(state, action) {
         case 'TOGGLE_TODO_STATUS': {
             const statusCycle = { pending: 'in_progress', in_progress: 'completed', completed: 'pending' };
             return {
-                ...state, todos: state.todos.map(t => t.id === action.payload
-                    ? { ...t, status: statusCycle[t.status] || 'pending' }
-                    : t
-                )
+                ...state, todos: state.todos.map(t => {
+                    if (t.id !== action.payload) return t;
+                    const newStatus = statusCycle[t.status] || 'pending';
+                    // Award coins when completing
+                    if (newStatus === 'completed' && t.status !== 'completed') {
+                        const { coins, bonusNote, recurring } = calculateCompletionCoins(t, state.courses);
+                        addCoins(coins, t.title, bonusNote);
+                        // Emit event for animation
+                        window.dispatchEvent(new CustomEvent('coinEarned', { detail: { coins, bonusNote, recurring } }));
+                    }
+                    return { ...t, status: newStatus };
+                })
             };
         }
         case 'TOGGLE_SUBTODO': {

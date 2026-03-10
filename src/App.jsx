@@ -8,6 +8,7 @@ import MobileNav from './components/layout/MobileNav';
 import AIAssistant from './components/AIAssistant';
 import InstallPrompt from './components/InstallPrompt';
 import OnboardingFlow from './components/OnboardingFlow';
+import CoinAnimation from './components/CoinAnimation';
 import Dashboard from './pages/Dashboard';
 import TodoList from './pages/TodoList';
 import CourseFolders from './pages/CourseFolders';
@@ -100,6 +101,7 @@ function AppContent() {
             <MobileNav />
             <AIAssistant />
             <InstallPrompt />
+            <CoinAnimation />
         </div>
     );
 }
