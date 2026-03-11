@@ -358,6 +358,16 @@ function TaskItem({ task, courses, dispatch, expanded, onToggle, onEdit }) {
                                     AI:{task.aiPriorityScore}
                                 </span>
                             )}
+                            {task.coinReward && !task.coinsAwarded && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400" title="Coin reward for completing">
+                                    🪙 {task.coinReward.baseCoins}
+                                </span>
+                            )}
+                            {task.coinsAwarded && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium bg-green-500/10 text-green-500" title="Coins already claimed for this task">
+                                    ✅ Claimed
+                                </span>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-3 mt-1 flex-wrap">

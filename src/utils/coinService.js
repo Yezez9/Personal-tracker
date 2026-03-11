@@ -153,6 +153,7 @@ export function calculateCompletionCoins(task, courses) {
     const taskType = task.coinReward?.taskType || 'other';
     let coins = baseCoins;
     let bonusNote = '';
+    let latePenalty = 0;
 
     // Early completion bonus
     if (task.dueDate) {
@@ -163,6 +164,27 @@ export function calculateCompletionCoins(task, courses) {
         if (daysEarly >= 3) { coins = Math.round(coins * 1.5); bonusNote = '+50% early bonus! '; }
         else if (daysEarly >= 1) { coins = Math.round(coins * 1.25); bonusNote = '+25% early bonus! '; }
         else if (daysEarly < 0) { coins = Math.max(5, Math.round(coins * 0.75)); bonusNote = '-25% late penalty. '; }
+    }
+
+    // Late progress deduction — penalty for starting after due date
+    if (task.startedAt && task.dueDate) {
+        const started = new Date(task.startedAt);
+        const due = new Date(task.dueDate);
+        started.setHours(0, 0, 0, 0);
+        due.setHours(0, 0, 0, 0);
+        const daysLateStart = Math.floor((started - due) / (1000 * 60 * 60 * 24));
+
+        if (daysLateStart > 0) {
+            let penaltyPct = 0;
+            if (daysLateStart >= 4) penaltyPct = 0.50;
+            else if (daysLateStart === 3) penaltyPct = 0.35;
+            else if (daysLateStart === 2) penaltyPct = 0.20;
+            else if (daysLateStart === 1) penaltyPct = 0.10;
+
+            latePenalty = Math.round(coins * penaltyPct);
+            coins = Math.max(5, coins - latePenalty);
+            bonusNote += `-${Math.round(penaltyPct * 100)}% late start (${daysLateStart}d). `;
+        }
     }
 
     // Recurrence detection
@@ -181,5 +203,6 @@ export function calculateCompletionCoins(task, courses) {
     }
 
     coins = Math.max(5, coins);
-    return { coins, bonusNote: bonusNote.trim(), recurring };
+    return { coins, baseBeforePenalty: baseCoins, latePenalty, bonusNote: bonusNote.trim(), recurring };
 }
+

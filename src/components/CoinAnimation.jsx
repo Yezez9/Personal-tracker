@@ -3,45 +3,68 @@ import { playNotificationSound } from '../utils/soundService';
 
 export default function CoinAnimation() {
     const [animation, setAnimation] = useState(null);
+    const [claimedToast, setClaimedToast] = useState(null);
 
     useEffect(() => {
         const handler = (e) => {
-            const { coins, bonusNote } = e.detail;
-            setAnimation({ coins, bonusNote, id: Date.now() });
+            const { coins, bonusNote, latePenalty, baseBeforePenalty } = e.detail;
+            setAnimation({ coins, bonusNote, latePenalty, baseBeforePenalty, id: Date.now() });
             playNotificationSound();
             setTimeout(() => setAnimation(null), 2500);
         };
+        const claimedHandler = (e) => {
+            setClaimedToast({ taskTitle: e.detail.taskTitle, id: Date.now() });
+            setTimeout(() => setClaimedToast(null), 2500);
+        };
         window.addEventListener('coinEarned', handler);
-        return () => window.removeEventListener('coinEarned', handler);
+        window.addEventListener('coinAlreadyClaimed', claimedHandler);
+        return () => {
+            window.removeEventListener('coinEarned', handler);
+            window.removeEventListener('coinAlreadyClaimed', claimedHandler);
+        };
     }, []);
 
-    if (!animation) return null;
-
     return (
-        <div key={animation.id} className="fixed inset-0 z-[200] pointer-events-none flex items-center justify-center">
-            {/* Floating coins burst */}
-            {[...Array(8)].map((_, i) => (
-                <span
-                    key={i}
-                    className="coin-particle absolute text-2xl"
-                    style={{
-                        '--angle': `${(i * 45) + (Math.random() * 20 - 10)}deg`,
-                        '--distance': `${80 + Math.random() * 60}px`,
-                        animationDelay: `${i * 50}ms`,
-                    }}
-                >
-                    🪙
-                </span>
-            ))}
-            {/* Central amount display */}
-            <div className="coin-amount-popup">
-                <span className="text-3xl font-black text-yellow-400 drop-shadow-lg">
-                    +{animation.coins} 🪙
-                </span>
-                {animation.bonusNote && (
-                    <p className="text-xs text-yellow-300 font-medium mt-1 text-center max-w-[200px]">{animation.bonusNote}</p>
-                )}
-            </div>
-        </div>
+        <>
+            {/* Coin burst animation */}
+            {animation && (
+                <div key={animation.id} className="fixed inset-0 z-[200] pointer-events-none flex items-center justify-center">
+                    {[...Array(8)].map((_, i) => (
+                        <span
+                            key={i}
+                            className="coin-particle absolute text-2xl"
+                            style={{
+                                '--angle': `${(i * 45) + (Math.random() * 20 - 10)}deg`,
+                                '--distance': `${80 + Math.random() * 60}px`,
+                                animationDelay: `${i * 50}ms`,
+                            }}
+                        >
+                            🪙
+                        </span>
+                    ))}
+                    <div className="coin-amount-popup">
+                        <span className="text-3xl font-black text-yellow-400 drop-shadow-lg">
+                            +{animation.coins} 🪙
+                        </span>
+                        {animation.latePenalty > 0 && (
+                            <p className="text-xs text-red-400 font-medium mt-0.5">-{animation.latePenalty} late penalty</p>
+                        )}
+                        {animation.bonusNote && (
+                            <p className="text-xs text-yellow-300 font-medium mt-1 text-center max-w-[220px]">{animation.bonusNote}</p>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Already claimed toast */}
+            {claimedToast && (
+                <div key={claimedToast.id} className="fixed top-20 left-1/2 -translate-x-1/2 z-[200] pointer-events-none">
+                    <div className="coin-amount-popup bg-gray-900/90 backdrop-blur-sm px-5 py-3 rounded-xl shadow-2xl">
+                        <span className="text-sm font-semibold text-gray-300">Coins already claimed ✅</span>
+                        <p className="text-xs text-gray-500 mt-0.5 text-center">No coins awarded for re-completing this task</p>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }

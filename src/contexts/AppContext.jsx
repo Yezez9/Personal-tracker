@@ -53,6 +53,9 @@ function appReducer(state, action) {
                 aiPriorityScore: 0,
                 aiPriorityReason: '',
                 coinReward: null,
+                coinsAwarded: false,
+                startedAt: null,
+                completedAt: null,
                 ...action.payload,
             };
             const { score, reason } = generatePriorityScore(newTodo, state.todos);
@@ -87,14 +90,29 @@ function appReducer(state, action) {
                 ...state, todos: state.todos.map(t => {
                     if (t.id !== action.payload) return t;
                     const newStatus = statusCycle[t.status] || 'pending';
-                    // Award coins when completing
-                    if (newStatus === 'completed' && t.status !== 'completed') {
-                        const { coins, bonusNote, recurring } = calculateCompletionCoins(t, state.courses);
-                        addCoins(coins, t.title, bonusNote);
-                        // Emit event for animation
-                        window.dispatchEvent(new CustomEvent('coinEarned', { detail: { coins, bonusNote, recurring } }));
+                    const updates = { status: newStatus };
+
+                    // Record startedAt when entering in_progress
+                    if (newStatus === 'in_progress' && !t.startedAt) {
+                        updates.startedAt = new Date().toISOString();
                     }
-                    return { ...t, status: newStatus };
+
+                    // Award coins when completing — ANTI-CHEAT: only if not already awarded
+                    if (newStatus === 'completed' && t.status !== 'completed') {
+                        if (!t.coinsAwarded) {
+                            const { coins, bonusNote, recurring, latePenalty, baseBeforePenalty } = calculateCompletionCoins(t, state.courses);
+                            addCoins(coins, t.title, bonusNote);
+                            updates.coinsAwarded = true;
+                            updates.completedAt = new Date().toISOString();
+                            // Emit event for animation
+                            window.dispatchEvent(new CustomEvent('coinEarned', { detail: { coins, bonusNote, recurring, latePenalty, baseBeforePenalty } }));
+                        } else {
+                            // Already claimed — emit zero-coin event
+                            window.dispatchEvent(new CustomEvent('coinAlreadyClaimed', { detail: { taskTitle: t.title } }));
+                        }
+                    }
+
+                    return { ...t, ...updates };
                 })
             };
         }
