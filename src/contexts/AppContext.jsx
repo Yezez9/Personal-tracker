@@ -97,23 +97,28 @@ function appReducer(state, action) {
                         updates.startedAt = new Date().toISOString();
                     }
 
-                    // Award coins when completing — ANTI-CHEAT: only if not already awarded
+                    // Mark pending completion — coins will be awarded async
                     if (newStatus === 'completed' && t.status !== 'completed') {
-                        if (!t.coinsAwarded) {
-                            const { coins, bonusNote, recurring, latePenalty, baseBeforePenalty } = calculateCompletionCoins(t, state.courses);
-                            addCoins(coins, t.title, bonusNote);
-                            updates.coinsAwarded = true;
-                            updates.completedAt = new Date().toISOString();
-                            // Emit event for animation
-                            window.dispatchEvent(new CustomEvent('coinEarned', { detail: { coins, bonusNote, recurring, latePenalty, baseBeforePenalty } }));
-                        } else {
+                        if (t.coinsAwarded) {
                             // Already claimed — emit zero-coin event
                             window.dispatchEvent(new CustomEvent('coinAlreadyClaimed', { detail: { taskTitle: t.title } }));
+                        } else {
+                            updates.completedAt = new Date().toISOString();
+                            updates._pendingCoinAward = true;
                         }
                     }
 
                     return { ...t, ...updates };
                 })
+            };
+        }
+        case 'AWARD_COINS': {
+            // Called after async AI coin calculation completes
+            const { taskId, coinResult } = action.payload;
+            return {
+                ...state, todos: state.todos.map(t =>
+                    t.id === taskId ? { ...t, coinsAwarded: true, _pendingCoinAward: false } : t
+                )
             };
         }
         case 'TOGGLE_SUBTODO': {
@@ -204,6 +209,27 @@ export function AppProvider({ children }) {
         storage.set('va_chat_history', state.chatHistory);
         storage.set('onboarding_complete', state.onboardingComplete);
     }, [state]);
+
+    // Async coin award processing — watches for _pendingCoinAward flag
+    useEffect(() => {
+        const pending = state.todos.filter(t => t._pendingCoinAward && !t.coinsAwarded);
+        pending.forEach(async (task) => {
+            try {
+                const result = await calculateCompletionCoins(task, state.courses);
+                addCoins(result.coins, task.title, result.reasoning);
+                // Emit event for breakdown animation
+                window.dispatchEvent(new CustomEvent('coinEarned', { detail: result }));
+                dispatch({ type: 'AWARD_COINS', payload: { taskId: task.id, coinResult: result } });
+            } catch (err) {
+                console.warn('[CoinAward] Error:', err);
+                // Fallback — award base coins
+                const fallback = task.coinReward?.baseCoins || 25;
+                addCoins(fallback, task.title, 'Completed!');
+                window.dispatchEvent(new CustomEvent('coinEarned', { detail: { coins: fallback, baseCoins: fallback, earlyBonus: 0, latePenalty: 0, recurringDeduct: 0, streakMultiplier: 1, reasoning: 'Completed!' } }));
+                dispatch({ type: 'AWARD_COINS', payload: { taskId: task.id } });
+            }
+        });
+    }, [state.todos]);
 
     return (
         <AppContext.Provider value={{ state, dispatch }}>

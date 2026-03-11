@@ -7,10 +7,10 @@ export default function CoinAnimation() {
 
     useEffect(() => {
         const handler = (e) => {
-            const { coins, bonusNote, latePenalty, baseBeforePenalty } = e.detail;
-            setAnimation({ coins, bonusNote, latePenalty, baseBeforePenalty, id: Date.now() });
+            const detail = e.detail || {};
+            setAnimation({ ...detail, id: Date.now() });
             playNotificationSound();
-            setTimeout(() => setAnimation(null), 2500);
+            setTimeout(() => setAnimation(null), 3500);
         };
         const claimedHandler = (e) => {
             setClaimedToast({ taskTitle: e.detail.taskTitle, id: Date.now() });
@@ -26,13 +26,19 @@ export default function CoinAnimation() {
 
     return (
         <>
-            {/* Coin burst animation */}
+            {/* Detailed coin breakdown popup */}
             {animation && (
-                <div key={animation.id} className="fixed inset-0 z-[200] pointer-events-none flex items-center justify-center">
+                <div
+                    key={animation.id}
+                    className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+                    onClick={() => setAnimation(null)}
+                    style={{ pointerEvents: 'auto' }}
+                >
+                    {/* Coin particles */}
                     {[...Array(8)].map((_, i) => (
                         <span
                             key={i}
-                            className="coin-particle absolute text-2xl"
+                            className="coin-particle absolute text-2xl pointer-events-none"
                             style={{
                                 '--angle': `${(i * 45) + (Math.random() * 20 - 10)}deg`,
                                 '--distance': `${80 + Math.random() * 60}px`,
@@ -42,16 +48,60 @@ export default function CoinAnimation() {
                             🪙
                         </span>
                     ))}
-                    <div className="coin-amount-popup">
-                        <span className="text-3xl font-black text-yellow-400 drop-shadow-lg">
-                            +{animation.coins} 🪙
-                        </span>
-                        {animation.latePenalty > 0 && (
-                            <p className="text-xs text-red-400 font-medium mt-0.5">-{animation.latePenalty} late penalty</p>
+
+                    {/* Breakdown card */}
+                    <div className="coin-amount-popup bg-gray-900/95 backdrop-blur-md rounded-2xl shadow-2xl border border-yellow-500/20 p-5 w-full max-w-[280px]">
+                        <p className="text-center text-base font-bold text-white mb-3">Task Completed! 🎉</p>
+
+                        <div className="border-t border-gray-700 pt-3 space-y-1.5">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-400">Base Reward</span>
+                                <span className="text-white font-semibold">+{animation.baseCoins || animation.coins || 0} 🪙</span>
+                            </div>
+
+                            {(animation.earlyBonus || 0) > 0 && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-green-400">Early Bonus</span>
+                                    <span className="text-green-400 font-semibold">+{animation.earlyBonus} 🪙</span>
+                                </div>
+                            )}
+
+                            {(animation.streakMultiplier || 1) > 1 && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-orange-400">🔥 Streak</span>
+                                    <span className="text-orange-400 font-semibold">×{animation.streakMultiplier}</span>
+                                </div>
+                            )}
+
+                            {(animation.latePenalty || 0) > 0 && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-red-400">Late Penalty</span>
+                                    <span className="text-red-400 font-semibold">-{animation.latePenalty} 🪙</span>
+                                </div>
+                            )}
+
+                            {(animation.recurringDeduct || 0) > 0 && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-amber-400">Recurring</span>
+                                    <span className="text-amber-400 font-semibold">-{animation.recurringDeduct} 🪙</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="border-t border-gray-700 mt-3 pt-3">
+                            <div className="flex justify-between text-lg">
+                                <span className="text-gray-300 font-bold">Total Earned</span>
+                                <span className="text-yellow-400 font-black">+{animation.coins || 0} 🪙</span>
+                            </div>
+                        </div>
+
+                        {animation.reasoning && (
+                            <p className="text-[11px] text-gray-500 italic mt-2 text-center leading-snug">
+                                {animation.reasoning}
+                            </p>
                         )}
-                        {animation.bonusNote && (
-                            <p className="text-xs text-yellow-300 font-medium mt-1 text-center max-w-[220px]">{animation.bonusNote}</p>
-                        )}
+
+                        <p className="text-[10px] text-gray-600 text-center mt-2">Tap to dismiss</p>
                     </div>
                 </div>
             )}

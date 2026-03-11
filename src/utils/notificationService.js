@@ -86,7 +86,8 @@ export async function generateDailyNotifications(context) {
         .filter(t => t.status !== 'completed')
         .map(t => {
             const daysUntil = t.dueDate ? Math.ceil((new Date(t.dueDate) - today) / (1000 * 60 * 60 * 24)) : null;
-            return `"${t.title}" (${t.priority} priority, ${daysUntil !== null ? daysUntil + ' days until due' : 'no due date'}, status: ${t.status})`;
+            const coinReward = t.coinReward?.baseCoins || 0;
+            return `"${t.title}" (${t.priority} priority, ${daysUntil !== null ? daysUntil + ' days until due' : 'no due date'}, status: ${t.status}, coin reward: ${coinReward}🪙)`;
         }).join(', ');
 
     const todayClasses = schedule.filter(s => s.day === dayName)
@@ -105,7 +106,10 @@ export async function generateDailyNotifications(context) {
 - Classes today: ${todayClasses || 'None'}
 - Upcoming events: ${upcomingCountdowns || 'None'}
 
-Write 3 short push notification messages for today — one for morning, one for afternoon, one for evening. Each must be unique, reference their actual tasks or exams by name, and have personality and light humor like Duolingo. Include emojis. Keep each message under 100 characters.
+Write 3 short push notification messages for today — one for morning, one for afternoon, one for evening. Each must be unique, reference their actual tasks or exams by name, and have personality and light humor like Duolingo. Include emojis. Keep each under 120 characters.
+
+IMPORTANT: Also mention the coin reward at risk if tasks are not completed on time. Use the actual coin values shown above. Be dramatic and fun about it — threaten coin loss, celebrate potential gain, create urgency about the late penalty. Example tones: "Hey ${profile?.name || 'Student'}, your ${todos[0]?.coinReward?.baseCoins || 40}🪙 reward on ${todos[0]?.title || 'your task'} drops at midnight. DO NOT let that happen 😤" — always generate fresh unique messages using real task names and coin amounts.
+
 Return as JSON array: [{"time":"morning","title":"TaskTrack","body":"message"},{"time":"afternoon","title":"TaskTrack","body":"message"},{"time":"evening","title":"TaskTrack","body":"message"}]
 Return ONLY the JSON array, no other text.`;
 

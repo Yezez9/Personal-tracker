@@ -146,63 +146,115 @@ Return ONLY this JSON — no other text:
     return { baseCoins, taskType, difficultyScore: Math.round(baseCoins / 10), reasoning: 'Scored locally based on task type and priority.' };
 }
 
-// ─── Calculate Final Coins on Completion ────────────────────────────
-export function calculateCompletionCoins(task, courses) {
+// ─── Calculate Final Coins on Completion (AI-Powered) ───────────────
+export async function calculateCompletionCoins(task, courses) {
     const baseCoins = task.coinReward?.baseCoins || 25;
     const courseName = courses?.find(c => c.id === task.course)?.name || 'General';
     const taskType = task.coinReward?.taskType || 'other';
-    let coins = baseCoins;
-    let bonusNote = '';
-    let latePenalty = 0;
+    const difficultyScore = task.coinReward?.difficultyScore || 5;
+    const streakData = storage.get('study_streak') || { currentStreak: 1 };
+    const streak = streakData.currentStreak || 1;
+    const { multiplier: streakMultiplier } = getStreakMultiplier();
 
-    // Early completion bonus
+    // Calculate days early/late
+    let daysEarly = 0;
     if (task.dueDate) {
-        const now = new Date();
-        const due = new Date(task.dueDate);
-        const daysEarly = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
-
-        if (daysEarly >= 3) { coins = Math.round(coins * 1.5); bonusNote = '+50% early bonus! '; }
-        else if (daysEarly >= 1) { coins = Math.round(coins * 1.25); bonusNote = '+25% early bonus! '; }
-        else if (daysEarly < 0) { coins = Math.max(5, Math.round(coins * 0.75)); bonusNote = '-25% late penalty. '; }
+        const now = new Date(); now.setHours(0, 0, 0, 0);
+        const due = new Date(task.dueDate); due.setHours(0, 0, 0, 0);
+        daysEarly = Math.floor((due - now) / (1000 * 60 * 60 * 24));
     }
 
-    // Late progress deduction — penalty for starting after due date
+    // Late-start penalty
+    let latePenalty = 0;
     if (task.startedAt && task.dueDate) {
-        const started = new Date(task.startedAt);
-        const due = new Date(task.dueDate);
-        started.setHours(0, 0, 0, 0);
-        due.setHours(0, 0, 0, 0);
+        const started = new Date(task.startedAt); started.setHours(0, 0, 0, 0);
+        const due = new Date(task.dueDate); due.setHours(0, 0, 0, 0);
         const daysLateStart = Math.floor((started - due) / (1000 * 60 * 60 * 24));
-
         if (daysLateStart > 0) {
-            let penaltyPct = 0;
-            if (daysLateStart >= 4) penaltyPct = 0.50;
-            else if (daysLateStart === 3) penaltyPct = 0.35;
-            else if (daysLateStart === 2) penaltyPct = 0.20;
-            else if (daysLateStart === 1) penaltyPct = 0.10;
-
-            latePenalty = Math.round(coins * penaltyPct);
-            coins = Math.max(5, coins - latePenalty);
-            bonusNote += `-${Math.round(penaltyPct * 100)}% late start (${daysLateStart}d). `;
+            let pct = daysLateStart >= 4 ? 0.50 : daysLateStart === 3 ? 0.35 : daysLateStart === 2 ? 0.20 : 0.10;
+            latePenalty = Math.round(baseCoins * pct);
         }
     }
 
     // Recurrence detection
     const completionCount = recordCompletion(courseName, taskType);
     const recurring = completionCount >= 3;
-    if (recurring) {
-        coins = Math.max(5, Math.round(coins * 0.85));
-        bonusNote += 'Recurring task -15%. ';
+    const recurringDeduct = recurring ? Math.round(baseCoins * 0.15) : 0;
+
+    // ─── Call AI for smart early bonus ───
+    let earlyBonus = 0;
+    let totalCoins = baseCoins;
+    let reasoning = '';
+
+    if (GROQ_API_KEY && daysEarly > 0) {
+        const systemPrompt = `You are a reward engine for a student productivity app. A student just completed a task. Calculate the exact bonus coins to award using your own judgment based on ALL of these factors combined:
+
+Task base coins: ${baseCoins}
+Task type: ${taskType}
+Priority level: ${task.priority || 'medium'}
+Difficulty score: ${difficultyScore}/10
+Days completed BEFORE due date: ${daysEarly}
+Current study streak: ${streak} days
+Was this task recurring in the same subject: ${recurring ? 'yes' : 'no'}
+
+Rules:
+- Completing 7+ days early on a high priority exam should give a large bonus — potentially doubling base coins
+- Completing 1 day early on a low priority reading gives a small bonus — maybe 10-15% extra
+- Completing exactly on the due date gives no bonus — base coins only
+- The earlier AND harder the task, the exponentially more bonus — not linear
+- Think carefully and justify your number
+
+Return ONLY this JSON — no other text:
+{"bonusCoins":number,"totalCoins":number,"earlyBonus":number,"reasoning":"one sentence natural explanation shown to user"}`;
+
+        try {
+            const res = await fetch(GROQ_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
+                body: JSON.stringify({
+                    model: 'llama-3.3-70b-versatile',
+                    messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: 'Calculate the bonus now.' }],
+                    temperature: 0.6, max_tokens: 200
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const text = data.choices?.[0]?.message?.content || '';
+                const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+                const parsed = JSON.parse(cleaned);
+                earlyBonus = parsed.earlyBonus || parsed.bonusCoins || 0;
+                reasoning = parsed.reasoning || '';
+            }
+        } catch (err) {
+            console.warn('[CoinService] AI bonus calc failed:', err.message);
+        }
     }
 
-    // Streak multiplier
-    const { multiplier, label } = getStreakMultiplier();
-    if (multiplier > 1) {
-        coins = Math.round(coins * multiplier);
-        bonusNote += `Streak ${label}! `;
+    // Fallback if AI didn't respond
+    if (earlyBonus === 0 && daysEarly > 0) {
+        if (daysEarly >= 7) earlyBonus = Math.round(baseCoins * 0.8);
+        else if (daysEarly >= 3) earlyBonus = Math.round(baseCoins * 0.4);
+        else if (daysEarly >= 1) earlyBonus = Math.round(baseCoins * 0.15);
+        reasoning = `Completed ${daysEarly} day${daysEarly > 1 ? 's' : ''} early — nice work!`;
     }
 
-    coins = Math.max(5, coins);
-    return { coins, baseBeforePenalty: baseCoins, latePenalty, bonusNote: bonusNote.trim(), recurring };
+    // Calculate total
+    totalCoins = baseCoins + earlyBonus - latePenalty - recurringDeduct;
+    // Apply streak multiplier to total
+    totalCoins = Math.round(totalCoins * streakMultiplier);
+    totalCoins = Math.max(5, totalCoins);
+
+    const bonusNote = reasoning || (daysEarly < 0 ? 'Completed late.' : daysEarly === 0 ? 'Completed on time.' : `${daysEarly}d early!`);
+
+    return {
+        coins: totalCoins,
+        baseCoins,
+        earlyBonus,
+        latePenalty,
+        recurringDeduct,
+        streakMultiplier,
+        recurring,
+        reasoning: bonusNote,
+        daysEarly,
+    };
 }
-
