@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { playNotificationSound } from '../utils/soundService';
 
 export default function CoinAnimation() {
     const [animation, setAnimation] = useState(null);
@@ -7,6 +8,7 @@ export default function CoinAnimation() {
         const handler = (e) => {
             const { coins, bonusNote } = e.detail;
             setAnimation({ coins, bonusNote, id: Date.now() });
+            playNotificationSound();
             setTimeout(() => setAnimation(null), 2500);
         };
         window.addEventListener('coinEarned', handler);

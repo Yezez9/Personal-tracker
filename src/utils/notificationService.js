@@ -1,5 +1,6 @@
 // Notification Service — AI-powered push notifications via Groq LLaMA 3.3 70B
 import storage from './storage';
+import { playNotificationSound } from './soundService';
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
@@ -37,6 +38,9 @@ export async function requestNotificationPermission() {
 function showNotification(title, body, tag) {
     if (Notification.permission !== 'granted') return;
 
+    // Play the iMessage-style chime
+    playNotificationSound();
+
     // Try service worker notifications first (work when app is closed)
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.ready.then(reg => {
@@ -46,6 +50,7 @@ function showNotification(title, body, tag) {
                 badge: '/icons/icon-192x192.png',
                 tag: tag || 'tasktrack-' + Date.now(),
                 vibrate: [100, 50, 100],
+                silent: false,
                 renotify: true,
             });
         });

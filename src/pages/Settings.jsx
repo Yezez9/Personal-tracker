@@ -4,7 +4,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import storage from '../utils/storage';
 import { getNotificationSettings, setNotificationSettings, requestNotificationPermission } from '../utils/notificationService';
 import { getCoinWallet, getLevel, getStreakMultiplier, LEVELS } from '../utils/coinService';
-import { User, Download, Upload, Trash2, Moon, Sun, Bell, BellOff, Trophy } from 'lucide-react';
+import { isSoundEnabled, setSoundEnabled } from '../utils/soundService';
+import { User, Download, Upload, Trash2, Moon, Sun, Bell, BellOff, Trophy, Volume2, VolumeX } from 'lucide-react';
 
 export default function Settings() {
     const { state, dispatch } = useApp();
@@ -13,6 +14,7 @@ export default function Settings() {
     const [form, setForm] = useState(profile || { name: '', studentId: '', program: '', school: '', avatar: '' });
     const fileRef = useRef(null);
     const [notifSettings, setNotifSettings] = useState(getNotificationSettings());
+    const [soundOn, setSoundOn] = useState(isSoundEnabled());
 
     const toggleNotifSetting = async (key) => {
         // Request permission if enabling
@@ -147,11 +149,27 @@ export default function Settings() {
                             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifSettings.streakReminder ? 'translate-x-5' : ''}`} />
                         </button>
                     </div>
-                    {Notification.permission !== 'granted' && (
+                    {typeof Notification !== 'undefined' && Notification.permission !== 'granted' && (
                         <p className="text-[10px] text-amber-500 flex items-center gap-1">
                             <BellOff size={12} /> Browser notifications are currently blocked. Enable them in your browser settings.
                         </p>
                     )}
+                    {/* Sound Toggle */}
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-border-dark">
+                        <div className="flex items-center gap-2">
+                            {soundOn ? <Volume2 size={14} className="text-primary-light dark:text-primary-dark" /> : <VolumeX size={14} className="text-gray-400" />}
+                            <div>
+                                <p className="text-sm font-medium dark:text-txt-dark">Sound Effects</p>
+                                <p className="text-[10px] text-gray-400">iMessage-style chime on notifications & completions</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => { const v = !soundOn; setSoundOn(v); setSoundEnabled(v); }}
+                            className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${soundOn ? 'bg-primary-light dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${soundOn ? 'translate-x-5' : ''}`} />
+                        </button>
+                    </div>
                 </div>
             </div>
 

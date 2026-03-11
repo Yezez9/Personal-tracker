@@ -3,6 +3,7 @@ import storage from '../utils/storage';
 import { useApp } from '../contexts/AppContext';
 import { formatDate, formatRelativeDate, isToday, getDateGroup } from '../utils/helpers';
 import { generateDailyBriefing, generateSmartRecommendations } from '../utils/aiService';
+import { playNotificationSound } from '../utils/soundService';
 import {
     CheckCircle2, Clock, AlertTriangle, TrendingUp, Calendar, BookOpen, Sparkles, ChevronRight, Edit3
 } from 'lucide-react';
@@ -22,6 +23,7 @@ export default function Dashboard() {
         generateDailyBriefing({ todos, schedule, profile, courses, studySets, countdowns, bookmarks }).then(text => {
             setBriefing(text);
             setBriefingLoading(false);
+            if (text) playNotificationSound();
         });
     }, []);
 
