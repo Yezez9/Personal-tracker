@@ -2,6 +2,9 @@
 import storage from './storage';
 import { playNotificationSound } from './soundService';
 
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
@@ -29,16 +32,33 @@ async function callGroqForNotifications(systemPrompt) {
 
 // Request notification permission
 export async function requestNotificationPermission() {
+    if (Capacitor.isNativePlatform()) {
+        try {
+            const status = await LocalNotifications.requestPermissions();
+            return status.display === 'granted' ? 'granted' : 'denied';
+        } catch { return 'denied'; }
+    }
+
     if (!('Notification' in window)) return 'denied';
     if (Notification.permission === 'granted') return 'granted';
     return await Notification.requestPermission();
 }
 
-// Show a browser notification
+// Show a browser notification immediately
 function showNotification(title, body, tag) {
+    // On native, immediate notifications are just scheduled for 'now' (handled in scheduleAt)
+    if (Capacitor.isNativePlatform()) {
+        LocalNotifications.schedule({
+            notifications: [{
+                title, body, id: Math.floor(Math.random() * 100000), schedule: { at: new Date(Date.now() + 1000) }
+            }]
+        });
+        return;
+    }
+
     if (Notification.permission !== 'granted') return;
 
-    // Play the iMessage-style chime
+    // Play the iMessage-style chime (web only, native plays default OS sound)
     playNotificationSound();
 
     // Try service worker notifications first (work when app is closed)
@@ -60,15 +80,35 @@ function showNotification(title, body, tag) {
     }
 }
 
-// Schedule a notification at a specific hour today
-function scheduleAt(hour, minute, callback) {
+// Schedule a notification at a specific hour today (or tomorrow if time passed on native)
+function scheduleAt(hour, minute, callback, title, body, tag) {
     const now = new Date();
     const target = new Date();
     target.setHours(hour, minute || 0, 0, 0);
 
     let delay = target - now;
-    if (delay < 0) return null; // Time already passed today
 
+    // For web setTimeout, if it passed, skip it
+    if (!Capacitor.isNativePlatform() && delay < 0) return null; 
+    
+    // For native, if it passed, schedule for tomorrow
+    if (Capacitor.isNativePlatform() && delay < 0) {
+        target.setDate(target.getDate() + 1);
+    }
+
+    if (Capacitor.isNativePlatform()) {
+        LocalNotifications.schedule({
+            notifications: [{
+                title, 
+                body, 
+                id: Math.floor(Math.random() * 100000), 
+                schedule: { at: target }
+            }]
+        });
+        return null;
+    }
+
+    // Web fallback
     return setTimeout(callback, delay);
 }
 
@@ -127,9 +167,13 @@ Return ONLY the JSON array, no other text.`;
 
         notifications.forEach(notif => {
             const hour = timeMap[notif.time] || 12;
+            const title = notif.title || 'TaskTrack';
+            const body = notif.body;
+            const tag = `tasktrack-${notif.time}`;
+            
             scheduleAt(hour, 0, () => {
-                showNotification(notif.title || 'TaskTrack', notif.body, `tasktrack-${notif.time}`);
-            });
+                showNotification(title, body, tag);
+            }, title, body, tag);
         });
 
         // Store that we already generated notifications today
@@ -158,9 +202,12 @@ export async function generateStreakReminder() {
         }
 
         const body = result.replace(/^["']|["']$/g, '').trim();
+        const title = '🔥 Streak at Risk!';
+        const tag = 'tasktrack-streak';
+
         scheduleAt(20, 0, () => {
-            showNotification('🔥 Streak at Risk!', body, 'tasktrack-streak');
-        });
+            showNotification(title, body, tag);
+        }, title, body, tag);
     } catch {
         showNotification('🔥 Streak at Risk!', `Your ${streak}-day streak needs you! Open TaskTrack now 🔥`, 'tasktrack-streak');
     }
