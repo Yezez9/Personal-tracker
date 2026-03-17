@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { PRESET_COLORS, PRESET_EMOJIS, formatDate, formatRelativeDate } from '../utils/helpers';
 import { Plus, X, ArrowLeft, FileText, Link2, BookOpen, CheckSquare, StickyNote, Trash2, ExternalLink, Edit3 } from 'lucide-react';
 
 function CourseModal({ show, onClose, course, dispatch }) {
     const [form, setForm] = useState(course || { name: '', code: '', color: PRESET_COLORS[0], icon: '📚', professor: '' });
+
+    useEffect(() => {
+        if (show) {
+            setForm(course || { name: '', code: '', color: PRESET_COLORS[0], icon: '📚', professor: '' });
+        }
+    }, [show, course]);
 
     if (!show) return null;
 
