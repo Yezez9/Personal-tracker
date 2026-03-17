@@ -5,13 +5,41 @@ import storage from '../utils/storage';
 import { getNotificationSettings, setNotificationSettings, requestNotificationPermission } from '../utils/notificationService';
 import { getCoinWallet, getLevel, getStreakMultiplier, LEVELS } from '../utils/coinService';
 import { isSoundEnabled, setSoundEnabled } from '../utils/soundService';
-import { User, Download, Upload, Trash2, Moon, Sun, Bell, BellOff, Trophy, Volume2, VolumeX } from 'lucide-react';
+import { User, Download, Upload, Trash2, Moon, Sun, Bell, BellOff, Trophy, Volume2, VolumeX, Smartphone } from 'lucide-react';
 
 export default function Settings() {
     const { state, dispatch } = useApp();
     const { darkMode, toggleDarkMode } = useTheme();
     const { profile } = state;
     const [form, setForm] = useState(profile || { name: '', studentId: '', program: '', school: '', avatar: '' });
+
+    const [deferredPrompt, setDeferredPrompt] = React.useState(window.deferredPrompt || null);
+    const [isInstalled, setIsInstalled] = React.useState(false);
+
+    React.useEffect(() => {
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator?.standalone || window.Capacitor) {
+            setIsInstalled(true);
+        }
+        
+        const handlePrompt = (e) => setDeferredPrompt(e);
+        window.addEventListener('beforeinstallprompt', handlePrompt);
+        window.addEventListener('appinstalled', () => {
+            setIsInstalled(true);
+            setDeferredPrompt(null);
+            window.deferredPrompt = null;
+        });
+        
+        return () => window.removeEventListener('beforeinstallprompt', handlePrompt);
+    }, []);
+
+    const handleInstallPWA = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') setIsInstalled(true);
+        setDeferredPrompt(null);
+        window.deferredPrompt = null;
+    };
     const fileRef = useRef(null);
     const [notifSettings, setNotifSettings] = useState(getNotificationSettings());
     const [soundOn, setSoundOn] = useState(isSoundEnabled());
@@ -96,6 +124,40 @@ export default function Settings() {
                     <div><label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">School</label><input value={form.school || ''} onChange={e => setForm(p => ({ ...p, school: e.target.value }))} className="input-field" /></div>
                 </div>
                 <button onClick={saveProfile} className="btn-primary mt-4">Save Profile</button>
+            </div>
+
+            {/* App Installation */}
+            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
+                <h2 className="text-sm font-semibold dark:text-txt-dark mb-4 flex items-center gap-2">
+                    <Smartphone size={16} className="text-accent-light dark:text-accent-dark" /> Install Apps
+                </h2>
+                <div className="space-y-3">
+                    <button 
+                        onClick={handleInstallPWA} 
+                        disabled={isInstalled || (!isInstalled && !deferredPrompt)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors text-left ${isInstalled || (!isInstalled && !deferredPrompt) ? 'opacity-50 cursor-not-allowed bg-gray-50 dark:bg-surface2-dark' : 'hover:bg-gray-50 dark:hover:bg-white/5 cursor-pointer'}`}
+                    >
+                        <Download size={18} className="text-primary-light dark:text-primary-dark" />
+                        <div>
+                            <p className="text-sm font-medium dark:text-txt-dark">
+                                {isInstalled ? 'Web App Already Installed ' : 'Install Web App (PWA)'}
+                            </p>
+                            <p className="text-[10px] text-gray-400">Add TaskTrack to your home screen</p>
+                        </div>
+                    </button>
+                    
+                    <a 
+                        href="/TaskTrack.apk" 
+                        download="TaskTrack.apk" 
+                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-left no-underline cursor-pointer"
+                    >
+                        <Download size={18} className="text-green-500" />
+                        <div>
+                            <p className="text-sm font-medium dark:text-txt-dark">Download Android APK</p>
+                            <p className="text-[10px] text-gray-400">Direct download for Android devices</p>
+                        </div>
+                    </a>
+                </div>
             </div>
 
             {/* Theme */}

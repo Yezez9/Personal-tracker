@@ -1,20 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { Download, X, Smartphone, ExternalLink } from 'lucide-react';
+import storage from '../utils/storage';
 
 export default function InstallPrompt() {
-    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [deferredPrompt, setDeferredPrompt] = useState(window.deferredPrompt || null);
     const [showBanner, setShowBanner] = useState(false);
     const [isInstalled, setIsInstalled] = useState(false);
 
     useEffect(() => {
         // Check if already installed as PWA or running inside Capacitor
-        if (window.matchMedia('(display-mode: standalone)').matches || window.Capacitor) {
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone || window.Capacitor) {
             setIsInstalled(true);
             return;
         }
 
+        // Check if recently dismissed
+        const lastDismissed = storage.get('install_prompt_dismissed');
+        if (lastDismissed) {
+            const daysSince = (Date.now() - lastDismissed) / (1000 * 60 * 60 * 24);
+            if (daysSince < 7) return; // Hide it if dismissed in the last 7 days
+        }
+
         const handler = (e) => {
             e.preventDefault();
+            window.deferredPrompt = e;
             setDeferredPrompt(e);
             setTimeout(() => setShowBanner(true), 2000);
         };
@@ -24,18 +33,27 @@ export default function InstallPrompt() {
             setIsInstalled(true);
             setShowBanner(false);
             setDeferredPrompt(null);
+            window.deferredPrompt = null;
         });
 
-        // If no PWA prompt fires after 3s, still show banner for APK download
-        const fallbackTimer = setTimeout(() => {
-            if (!window.matchMedia('(display-mode: standalone)').matches && !window.Capacitor) {
-                setShowBanner(true);
-            }
-        }, 3000);
+        let fallbackTimer;
+
+        // If the prompt already fired globally before this component mounted
+        if (window.deferredPrompt) {
+            setDeferredPrompt(window.deferredPrompt);
+            setTimeout(() => setShowBanner(true), 2000);
+        } else {
+            // If no PWA prompt fires after 3s, still show banner for APK download
+            fallbackTimer = setTimeout(() => {
+                if (!window.matchMedia('(display-mode: standalone)').matches && !window.Capacitor) {
+                    setShowBanner(true);
+                }
+            }, 3000);
+        }
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handler);
-            clearTimeout(fallbackTimer);
+            if (fallbackTimer) clearTimeout(fallbackTimer);
         };
     }, []);
 
@@ -48,6 +66,12 @@ export default function InstallPrompt() {
         }
         setShowBanner(false);
         setDeferredPrompt(null);
+        window.deferredPrompt = null;
+    };
+
+    const handleDismiss = () => {
+        storage.set('install_prompt_dismissed', Date.now());
+        setShowBanner(false);
     };
 
     if (isInstalled || !showBanner) return null;
@@ -71,7 +95,7 @@ export default function InstallPrompt() {
 
                     {/* Close */}
                     <button
-                        onClick={() => setShowBanner(false)}
+                        onClick={handleDismiss}
                         className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 transition-colors flex-shrink-0"
                     >
                         <X size={14} className="text-gray-300" />
@@ -105,7 +129,7 @@ export default function InstallPrompt() {
                     </a>
 
                     <button
-                        onClick={() => setShowBanner(false)}
+                        onClick={handleDismiss}
                         className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors px-2"
                     >
                         Not now
