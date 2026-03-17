@@ -323,13 +323,18 @@ function TaskItem({ task, courses, dispatch, expanded, onToggle, onEdit }) {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
                 style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 || swipeOffset === -130 ? 'transform 0.25s ease' : 'none' }}
-                className={`relative z-10 border transition-all duration-200 ${task.status === 'completed'
-                    ? 'bg-gray-50 dark:bg-surface2-dark/50 border-gray-100 dark:border-border-dark/50 opacity-60'
+                className={`relative z-10 border transition-all duration-200 bg-white dark:bg-surface-dark card-hover ${task.status === 'completed'
+                    ? 'border-gray-100 dark:border-border-dark/50'
                     : task.status === 'in_progress'
-                        ? 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800/30 card-hover'
-                        : 'bg-white dark:bg-surface-dark border-gray-200 dark:border-border-dark card-hover'
+                        ? 'border-amber-200 dark:border-amber-800/30'
+                        : 'border-gray-200 dark:border-border-dark'
                     }`}>
-                <div className="p-4 flex items-start gap-3">
+                
+                {/* Status overlays to prevent transparent background bleeding */}
+                {task.status === 'in_progress' && <div className="absolute inset-0 bg-amber-50/50 dark:bg-amber-900/10 pointer-events-none" />}
+                {task.status === 'completed' && <div className="absolute inset-0 bg-gray-50/80 dark:bg-surface2-dark/50 pointer-events-none" />}
+
+                <div className={`relative p-4 flex items-start gap-3 ${task.status === 'completed' ? 'opacity-60' : ''}`}>
                     {/* Checkbox */}
                     <button
                         onClick={() => dispatch({ type: 'TOGGLE_TODO_STATUS', payload: task.id })}
