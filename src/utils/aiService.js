@@ -2,8 +2,6 @@
 // Groq: https://api.groq.com/openai/v1/chat/completions
 // Gemini: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
-const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
@@ -29,28 +27,28 @@ async function callGemini(prompt) {
 
 async function callGroq(messages) {
     try {
-        const res = await fetch(GROQ_ENDPOINT, {
+        const res = await fetch('/api/chat', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GROQ_API_KEY}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 model: GROQ_MODEL,
-                messages,
-                temperature: 1.0,
-                max_tokens: 1000
+                messages
             })
         });
-        if (!res.ok) {
-            console.warn('[Groq] API error:', res.status);
-            return null;
-        }
+        
         const data = await res.json();
+        
+        if (!res.ok) {
+            console.error('[Groq] Server/API error:', res.status, data);
+            throw new Error(data.error || `HTTP error ${res.status}`);
+        }
+        
         return data.choices?.[0]?.message?.content || null;
     } catch (err) {
-        console.warn('[Groq] Network error:', err.message);
-        return null;
+        console.error('[Groq] Network or parsing error:', err.message);
+        throw err; // Re-throw to be caught by the UI so it can display the error to the user
     }
 }
 
