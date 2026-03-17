@@ -124,7 +124,7 @@ function buildFullDataJSON(context) {
         studySets: studySets.map(s => ({
             title: s.title,
             totalCards: s.cards?.length || 0,
-            masteredCards: s.cards?.filter(c => c.mastered).length || 0,
+            masteredCards: (s.cards || []).filter(c => c.mastered).length,
         })),
         countdowns: (countdowns || []).map(c => ({
             title: c.title,

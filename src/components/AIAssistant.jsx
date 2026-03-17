@@ -43,12 +43,21 @@ export default function AIAssistant() {
         setInput('');
         setTyping(true);
 
-        const context = { todos, schedule, courses, studySets, profile, bookmarks, countdowns, chatHistory };
-        const response = await generateVAResponse(input, context);
+        try {
+            const context = { todos, schedule, courses, studySets, profile, bookmarks, countdowns, chatHistory };
+            const response = await generateVAResponse(input, context);
 
-        const aiMsg = { role: 'assistant', content: response.message, timestamp: new Date().toISOString() };
-        dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
-        setTyping(false);
+            const aiMsg = { role: 'assistant', content: response?.message || 'Empty response', timestamp: new Date().toISOString() };
+            dispatch({ type: 'ADD_CHAT_MESSAGE', payload: aiMsg });
+        } catch (err) {
+            console.error('[AI Chat] UI Error:', err);
+            dispatch({
+                type: 'ADD_CHAT_MESSAGE', 
+                payload: { role: 'assistant', content: `Oops! An error crashed the chat: ${err.message}. Try clearing the conversation.`, timestamp: new Date().toISOString() }
+            });
+        } finally {
+            setTyping(false);
+        }
     };
 
     const formatTime = (ts) => {
