@@ -21,11 +21,16 @@ export default async function handler(req) {
             });
         }
 
-        const GROQ_API_KEY = process.env.VITE_GROQ_API_KEY; // Accessing safely from server ENV
+        // Securely pull the key from Vercel's server environment. 
+        // We check standard GROQ_API_KEY first, then fallback to VITE_ prefix if that's how it was deployed.
+        const GROQ_API_KEY = process.env.GROQ_API_KEY || process.env.VITE_GROQ_API_KEY; 
         
         if (!GROQ_API_KEY) {
-            console.error('[API] GROQ_API_KEY is not set in environment variables');
-            return new Response(JSON.stringify({ error: 'API key not configured' }), { 
+            console.error('[API] FATAL: GROQ_API_KEY is not set in Vercel Environment Variables');
+            return new Response(JSON.stringify({ 
+                error: 'Invalid API Key',
+                details: 'The Groq API Key is missing from the server environment setup.' 
+            }), { 
                 status: 500, 
                 headers: { 'Content-Type': 'application/json' } 
             });

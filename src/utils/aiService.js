@@ -161,12 +161,14 @@ Generate a short, warm, natural daily briefing (3-5 sentences). Follow these rul
 - Never give a generic response — always reference their ACTUAL data.
 - Keep it concise — no more than 5 sentences.`;
 
-    if (GROQ_API_KEY) {
+    try {
         const result = await callGroq([
             { role: 'system', content: systemPrompt },
             { role: 'user', content: 'Generate my daily briefing for right now.' }
         ]);
         if (result) return result;
+    } catch (err) {
+        console.warn('[Briefing] Groq API failed, using local fallback:', err.message);
     }
 
     // Local fallback if Groq is unavailable
@@ -257,43 +259,18 @@ export async function generateSmartRecommendations(context) {
         daysUntil: Math.ceil((new Date(c.date || c.targetDate) - today) / (1000 * 60 * 60 * 24)),
     }));
 
-    if (GROQ_API_KEY) {
-        const systemPrompt = `You are a smart task prioritization AI for a student. Analyze their pending tasks and return ONLY a JSON array of the top 3-5 most important tasks to work on right now.
-
-IMPORTANT RANKING RULES (use a point system):
-- Task TYPE weight: exam (50 pts) > project (40 pts) > assignment (30 pts) > lab (25 pts) > reading (15 pts) > other (10 pts). Determine type from tags, title, or description.
-- Due date proximity: overdue (+40), due today (+35), tomorrow (+25), within 3 days (+15), within 7 days (+5)
-- Manual priority: high (+15), medium (+0), low (-10)
-- Upcoming countdowns: if a countdown event is within 7 days and relates to a task's course, +10 bonus
-- Task complexity: if subtodo count > 3 or description > 100 chars, +5 (complex tasks need early starts)
-
-CRITICAL: An exam due in 7 days ranks HIGHER than a low-priority assignment due tomorrow. Think about CONSEQUENCES, not just deadlines.
-CRITICAL: Only include tasks with status "pending". Skip anything in_progress.
-
-Today's date: ${todayStr}
-
-Student's pending tasks:
-${JSON.stringify(taskData, null, 2)}
-
-Upcoming countdowns:
-${JSON.stringify(countdownData, null, 2)}
-
-Return ONLY valid JSON array (no markdown, no explanation) in this exact format:
-[{"taskId":"<actual task id>","recommendationReason":"<why this task matters most — mention task type, due date, consequences>","taskType":"exam|assignment|project|reading|lab|other","urgencyLevel":"high|medium|low","suggestedAction":"<specific next step>","suggestedDeadline":"<when to start/finish>"}]`;
-
-        try {
-            const result = await callGroq([
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: 'Rank my tasks and give me smart recommendations.' }
-            ]);
-            if (result) {
-                const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-                const parsed = JSON.parse(cleaned);
-                if (Array.isArray(parsed)) return parsed;
-            }
-        } catch (err) {
-            console.warn('[SmartRecs] Parse error, using fallback:', err.message);
+    try {
+        const result = await callGroq([
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: 'Rank my tasks and give me smart recommendations.' }
+        ]);
+        if (result) {
+            const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+            const parsed = JSON.parse(cleaned);
+            if (Array.isArray(parsed)) return parsed;
         }
+    } catch (err) {
+        console.warn('[SmartRecs] Groq API failed, using fallback:', err.message);
     }
 
     // Local fallback — basic sorting by type weight + due date
