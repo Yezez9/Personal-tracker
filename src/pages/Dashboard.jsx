@@ -144,7 +144,7 @@ export default function Dashboard() {
                         <CheckCircle2 size={14} /> {totalTodos} Active Tasks
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/15 backdrop-blur-sm text-sm font-medium">
-                        <Sparkles size={14} /> {studySets.length} Study Sets
+                        <Sparkles size={14} /> {(recurringTasks || []).length} Habits
                     </div>
                 </div>
             </div>

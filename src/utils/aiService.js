@@ -66,7 +66,7 @@ function getApiKey() {
 
 // ─── Build Full Live Data JSON ───────────────────────────────────────
 function buildFullDataJSON(context) {
-    const { todos = [], schedule = [], courses = [], studySets = [], profile = {}, bookmarks = [], countdowns = [] } = context;
+    const { todos = [], schedule = [], courses = [], recurringTasks = [], profile = {} } = context;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
@@ -119,25 +119,18 @@ function buildFullDataJSON(context) {
             course: courses.find(c => c.id === s.courseId)?.name || 'Class',
             room: s.room || null,
         })),
-        studySets: studySets.map(s => ({
-            title: s.title,
-            totalCards: s.cards?.length || 0,
-            masteredCards: (s.cards || []).filter(c => c.mastered).length,
-        })),
-        countdowns: (countdowns || []).map(c => ({
-            title: c.title,
-            targetDate: c.date || c.targetDate,
-        })),
-        bookmarks: (bookmarks || []).slice(0, 20).map(b => ({
-            title: b.title,
-            url: b.url,
+        recurringTasks: (recurringTasks || []).map(t => ({
+            title: t.title,
+            difficulty: t.difficulty,
+            currentStreak: t.currentStreak || 0,
+            isCompletedToday: t.isCompletedToday || false,
         })),
     };
 }
 
 // ─── Daily Briefing (Groq LLaMA 3.3 70B — fresh every load) ─────────
 export async function generateDailyBriefing(context) {
-    const { todos = [], schedule = [], profile = {}, courses = [], studySets = [], countdowns = [], bookmarks = [] } = context;
+    const { todos = [], schedule = [], profile = {}, courses = [], recurringTasks = [] } = context;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
@@ -233,7 +226,7 @@ export function generatePriorityScore(task, allTodos) {
 
 // ─── AI Smart Task Recommendations (Groq LLaMA 3.3 70B) ────────────
 export async function generateSmartRecommendations(context) {
-    const { todos = [], courses = [], countdowns = [], studySets = [] } = context;
+    const { todos = [], courses = [], recurringTasks = [] } = context;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
 
@@ -253,10 +246,10 @@ export async function generateSmartRecommendations(context) {
         aiPriorityScore: t.aiPriorityScore || null,
     }));
 
-    const countdownData = (countdowns || []).map(c => ({
-        title: c.title,
-        targetDate: c.date || c.targetDate,
-        daysUntil: Math.ceil((new Date(c.date || c.targetDate) - today) / (1000 * 60 * 60 * 24)),
+    const recurringData = (recurringTasks || []).map(t => ({
+        title: t.title,
+        difficulty: t.difficulty,
+        currentStreak: t.currentStreak || 0,
     }));
 
     try {

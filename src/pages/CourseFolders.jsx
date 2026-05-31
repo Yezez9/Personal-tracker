@@ -224,18 +224,17 @@ function CourseDetail({ course, onBack }) {
                     </div>
                 )}
 
-                {activeTab === 'studysets' && (
+                {activeTab === 'recurring' && (
                     <div>
-                        <h3 className="text-sm font-semibold dark:text-txt-dark mb-4">Study Sets</h3>
-                        {courseStudySets.length === 0 ? <p className="text-sm text-gray-400 text-center py-6">No study sets linked to this course</p> : (
+                        <h3 className="text-sm font-semibold dark:text-txt-dark mb-4">Recurring Tasks</h3>
+                        {courseRecurring.length === 0 ? <p className="text-sm text-gray-400 text-center py-6">No recurring tasks linked to this course</p> : (
                             <div className="space-y-2">
-                                {courseStudySets.map(s => (
-                                    <div key={s.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
-                                        onClick={() => { /* navigate to study sets */ }}>
-                                        <span className="text-lg">🃏</span>
+                                {courseRecurring.map(t => (
+                                    <div key={t.id} className="flex items-center gap-3 py-2 px-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors cursor-pointer">
+                                        <span className="text-lg">🔄</span>
                                         <div>
-                                            <p className="text-sm font-medium dark:text-txt-dark">{s.title}</p>
-                                            <p className="text-[10px] text-gray-400">{s.cards?.length || 0} cards</p>
+                                            <p className="text-sm font-medium dark:text-txt-dark">{t.title}</p>
+                                            <p className="text-[10px] text-gray-400">🔥 {t.currentStreak || 0} day streak</p>
                                         </div>
                                     </div>
                                 ))}
