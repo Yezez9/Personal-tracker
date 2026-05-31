@@ -25,7 +25,7 @@ function renderMarkdown(text) {
 
 export default function AIAssistant() {
     const { state, dispatch } = useApp();
-    const { chatHistory, todos, schedule, courses, studySets, profile, bookmarks, countdowns } = state;
+    const { chatHistory, todos, schedule, courses, recurringTasks, profile } = state;
     const [open, setOpen] = useState(false);
     const [input, setInput] = useState('');
     const [typing, setTyping] = useState(false);
@@ -44,7 +44,7 @@ export default function AIAssistant() {
         setTyping(true);
 
         try {
-            const context = { todos, schedule, courses, studySets, profile, bookmarks, countdowns, chatHistory };
+            const context = { todos, schedule, courses, recurringTasks, profile, chatHistory };
             const response = await generateVAResponse(input, context);
 
             const aiMsg = { role: 'assistant', content: response?.message || 'Empty response', timestamp: new Date().toISOString() };

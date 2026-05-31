@@ -10,7 +10,7 @@ import {
 
 export default function Dashboard() {
     const { state, dispatch } = useApp();
-    const { profile, todos, schedule, courses, studySets, countdowns, bookmarks } = state;
+    const { profile, todos, schedule, courses, recurringTasks } = state;
     const [briefing, setBriefing] = useState('');
     const [editingCard, setEditingCard] = useState(false);
     const [smartRecs, setSmartRecs] = useState([]);
@@ -20,7 +20,7 @@ export default function Dashboard() {
 
     useEffect(() => {
         setBriefingLoading(true);
-        generateDailyBriefing({ todos, schedule, profile, courses, studySets, countdowns, bookmarks }).then(text => {
+        generateDailyBriefing({ todos, schedule, profile, courses, recurringTasks }).then(text => {
             setBriefing(text);
             setBriefingLoading(false);
             if (text) playNotificationSound();
@@ -36,7 +36,7 @@ export default function Dashboard() {
     // Fetch smart recommendations
     useEffect(() => {
         setRecsLoading(true);
-        generateSmartRecommendations({ todos, courses, countdowns: state.countdowns || [], studySets }).then(recs => {
+        generateSmartRecommendations({ todos, courses, recurringTasks: recurringTasks || [] }).then(recs => {
             setSmartRecs(recs);
             setRecsLoading(false);
         });

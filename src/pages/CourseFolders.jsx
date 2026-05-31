@@ -72,14 +72,14 @@ function CourseDetail({ course, onBack }) {
     const [showAddFile, setShowAddFile] = useState(false);
 
     const courseTodos = state.todos.filter(t => t.course === course.id);
-    const courseStudySets = state.studySets.filter(s => s.courseId === course.id);
+    const courseRecurring = (state.recurringTasks || []).filter(t => t.courseId === course.id);
     const courseLinks = course.links || [];
     const courseFiles = course.files || [];
 
     const tabs = [
         { id: 'files', label: 'Files', icon: FileText, count: courseFiles.length },
         { id: 'links', label: 'Links', icon: Link2, count: courseLinks.length },
-        { id: 'studysets', label: 'Study Sets', icon: BookOpen, count: courseStudySets.length },
+        { id: 'recurring', label: 'Recurring', icon: BookOpen, count: courseRecurring.length },
         { id: 'todos', label: 'To-Dos', icon: CheckSquare, count: courseTodos.length },
         { id: 'notes', label: 'Notes', icon: StickyNote },
     ];

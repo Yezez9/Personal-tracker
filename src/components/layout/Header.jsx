@@ -22,8 +22,7 @@ export default function Header({ onMenuToggle }) {
     const searchResults = searchQuery.length > 1 ? [
         ...searchItems(state.todos, searchQuery, ['title', 'description']).slice(0, 3).map(r => ({ ...r, type: 'task' })),
         ...searchItems(state.courses, searchQuery, ['name', 'code']).slice(0, 3).map(r => ({ ...r, type: 'course' })),
-        ...searchItems(state.bookmarks, searchQuery, ['title', 'url']).slice(0, 3).map(r => ({ ...r, type: 'bookmark' })),
-        ...searchItems(state.studySets, searchQuery, ['title']).slice(0, 3).map(r => ({ ...r, type: 'studyset' })),
+        ...searchItems(state.recurringTasks || [], searchQuery, ['title']).slice(0, 3).map(r => ({ ...r, type: 'recurring' })),
     ] : [];
 
     useEffect(() => {
@@ -39,8 +38,7 @@ export default function Header({ onMenuToggle }) {
     const navigateToResult = (result) => {
         if (result.type === 'task') dispatch({ type: 'SET_PAGE', payload: 'todos' });
         else if (result.type === 'course') dispatch({ type: 'SET_PAGE', payload: 'courses' });
-        else if (result.type === 'bookmark') dispatch({ type: 'SET_PAGE', payload: 'bookmarks' });
-        else if (result.type === 'studyset') dispatch({ type: 'SET_PAGE', payload: 'studysets' });
+        else if (result.type === 'recurring') dispatch({ type: 'SET_PAGE', payload: 'recurring' });
         setSearchQuery('');
         setShowSearch(false);
         setMobileSearchOpen(false);
