@@ -1,114 +1,214 @@
 # TaskTrack — Academic Organizer
 
-> AI-powered student organizer with task management, course organization, class schedule, study sets, and a conversational AI assistant powered by **Groq LLaMA 3.3 70B**.
-
----
+A premium student productivity app with AI-powered task management, gamification, and cloud sync.
 
 ## 🚀 Quick Start (Local Development)
 
 ```bash
+git clone https://github.com/Yezez9/Personal-tracker.git
+cd Personal-tracker
 npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173)
+Open `http://localhost:5173/` in your browser.
 
 ---
 
-## 🌐 One-Time Deployment Setup (Vercel + GitHub Auto-Deploy)
+## ☁️ Cloud Database Setup (Supabase — Free)
 
-Follow these steps **once** to set up automatic deployment. After this, every `git push` will update the live site automatically.
+TaskTrack supports **Supabase** as a free cloud database so your data persists across devices and browsers. Without Supabase, data is stored locally in your browser's localStorage.
 
-### Step 1: Push to GitHub
+### Step 1: Create a Supabase Account
 
-```bash
-# Initialize git (if not already done)
-git init
-git add .
-git commit -m "Initial commit"
+1. Go to [supabase.com](https://supabase.com) and create a **free account** (no credit card needed)
+2. Click **"New Project"** — name it `tasktrack`
+3. Choose a region close to you and set a database password
+4. Wait for the project to finish provisioning (~30 seconds)
 
-# Create repo on GitHub, then:
-git remote add origin https://github.com/YOUR_USERNAME/Personal-tracker.git
-git branch -M main
-git push -u origin main
+### Step 2: Get Your API Keys
+
+1. In your Supabase dashboard, go to **Settings → API**
+2. Copy:
+   - **Project URL** (e.g. `https://abcdefg.supabase.co`)
+   - **anon/public key** (starts with `eyJ...`)
+
+### Step 3: Add Keys to Your App
+
+Create a `.env` file in the project root (or add to your Vercel environment variables):
+
+```env
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-### Step 2: Deploy on Vercel
+### Step 4: Create Database Tables
 
-1. Go to [vercel.com](https://vercel.com) and sign in with GitHub
-2. Click **"Add New Project"** → **Import** your `Personal-tracker` repo
-3. Vercel auto-detects Vite — just click **Deploy**
-4. Wait ~60 seconds — your app is now live! 🎉
+Go to **Supabase Dashboard → SQL Editor** and run this SQL:
 
-### Step 3: Get Your Vercel Tokens
+```sql
+-- Users
+create table users (
+  id uuid primary key default gen_random_uuid(),
+  name text,
+  program text,
+  school text,
+  avatar text,
+  coins integer default 0,
+  streak integer default 0,
+  last_opened date,
+  created_at timestamp default now()
+);
 
-You need 3 tokens for the GitHub Action auto-deploy:
+-- Tasks
+create table tasks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id),
+  title text,
+  description text,
+  course_id uuid,
+  due_date date,
+  due_time time,
+  priority text,
+  status text default 'pending',
+  ai_priority_score integer,
+  coins_awarded boolean default false,
+  completed_at timestamp,
+  started_at timestamp,
+  base_coins integer,
+  total_coins integer,
+  created_at timestamp default now()
+);
 
-| Token | Where to find it |
-|-------|-----------------|
-| `VERCEL_TOKEN` | [vercel.com/account/tokens](https://vercel.com/account/tokens) → Create new token |
-| `VERCEL_ORG_ID` | [vercel.com/account](https://vercel.com/account) → Your **Account/Team ID** (in Settings → General) |
-| `VERCEL_PROJECT_ID` | Go to your project on Vercel → **Settings → General** → **Project ID** |
+-- Recurring Tasks
+create table recurring_tasks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id),
+  title text,
+  description text,
+  difficulty text,
+  base_coins integer,
+  penalty_coins integer,
+  current_streak integer default 0,
+  longest_streak integer default 0,
+  last_completed_date date,
+  consecutive_failed_days integer default 0,
+  total_completions integer default 0,
+  is_active boolean default true,
+  created_at timestamp default now()
+);
 
-### Step 4: Add Secrets to GitHub
+-- Courses
+create table courses (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id),
+  name text,
+  code text,
+  color text,
+  icon text,
+  professor text,
+  created_at timestamp default now()
+);
 
-1. Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions**
-2. Click **"New repository secret"** and add all 3:
-   - `VERCEL_TOKEN` → paste your token
-   - `VERCEL_ORG_ID` → paste your org/account ID
-   - `VERCEL_PROJECT_ID` → paste your project ID
+-- Class Schedule
+create table schedule (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id),
+  course_id uuid,
+  day text,
+  start_time time,
+  end_time time,
+  room text,
+  color text,
+  created_at timestamp default now()
+);
 
-### ✅ Done! Auto-Deploy is Now Active
+-- Countdowns
+create table countdowns (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id),
+  title text,
+  target_date date,
+  icon text,
+  color text,
+  created_at timestamp default now()
+);
 
-From this point forward, **every push to `main` triggers an automatic redeploy**.
+-- Bookmarks
+create table bookmarks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id),
+  url text,
+  title text,
+  description text,
+  course_id uuid,
+  created_at timestamp default now()
+);
 
----
+-- Shop Purchases
+create table shop_purchases (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id),
+  item_id text,
+  purchased_at timestamp default now()
+);
 
-## 📤 Pushing Updates (Every Time You Make Changes)
+-- Enable Row Level Security (recommended)
+alter table users enable row level security;
+alter table tasks enable row level security;
+alter table recurring_tasks enable row level security;
+alter table courses enable row level security;
+alter table schedule enable row level security;
+alter table countdowns enable row level security;
+alter table bookmarks enable row level security;
+alter table shop_purchases enable row level security;
 
-After editing your code, run these 3 commands:
-
-```bash
-git add .
-git commit -m "describe what you changed"
-git push origin main
+-- Allow anon key to read/write all rows (for personal use)
+create policy "Allow all" on users for all using (true) with check (true);
+create policy "Allow all" on tasks for all using (true) with check (true);
+create policy "Allow all" on recurring_tasks for all using (true) with check (true);
+create policy "Allow all" on courses for all using (true) with check (true);
+create policy "Allow all" on schedule for all using (true) with check (true);
+create policy "Allow all" on countdowns for all using (true) with check (true);
+create policy "Allow all" on bookmarks for all using (true) with check (true);
+create policy "Allow all" on shop_purchases for all using (true) with check (true);
 ```
 
-That's it! Within **30–60 seconds**, Vercel automatically:
-1. Detects the push
-2. Rebuilds the app
-3. Updates the live URL
-
-**Everyone using the link sees the latest version instantly.**
-
----
-
-## 📱 Native Android App
-
-The built APK is included in the project. Users can download it directly from the web app, or you can build a fresh one:
+### Step 5: Restart Your App
 
 ```bash
-npm run build
-npx cap sync android
-cd android && ./gradlew assembleDebug
+npm run dev
 ```
 
-APK output: `android/app/build/outputs/apk/debug/app-debug.apk`
-
-> **⚠️ Important: Web vs Mobile Updates**
->
-> - **Web app** — Updates automatically via Vercel on every `git push`. No action needed.
-> - **Mobile APK** — Must be **manually rebuilt** using the commands above and **reinstalled on your phone** each time new features are added. The APK does not auto-update.
+The app will now sync all data to Supabase automatically. Your `tasktrack_user_id` is stored in localStorage — this is the only local data. Everything else lives in the cloud.
 
 ---
+
+## 🔧 Environment Variables
+
+| Variable | Description | Required |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Supabase project URL | For cloud sync |
+| `VITE_SUPABASE_KEY` | Supabase anon/public key | For cloud sync |
+| `VITE_GROQ_API_KEY` | Groq API key for AI features | For AI features |
+| `VITE_GEMINI_API_KEY` | Gemini API key | For AI briefing |
+| `GROQ_API_KEY` | Server-side Groq key (Vercel) | For API routes |
+
+---
+
+## 📱 Features
+
+- **Dashboard** — Hero card, AI daily briefing, stat cards
+- **To-Do List** — AI priority scoring, coin rewards, swipe-to-reveal
+- **Course Folders** — Organize tasks by course with progress tracking
+- **Class Schedule** — Weekly grid view
+- **Calendar** — Monthly view with task overlays
+- **Recurring Tasks** — Daily habits with AI difficulty judging, streak bonuses, escalating penalties
+- **AI Assistant** — Chat powered by Groq LLaMA 3.3 70B
+- **Gamification** — Coin system, levels, streaks
+- **PWA** — Installable as a native app
+- **Dark Mode** — Premium glassmorphism theme
 
 ## 🛠 Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18 + Tailwind CSS |
-| AI Chat | Groq LLaMA 3.3 70B |
-| Build | Vite 6 |
-| Deploy | Vercel + GitHub Actions |
-| Native | Capacitor 6 (Android/iOS) |
-| Offline | Service Worker (PWA) |
+React + Vite + Tailwind CSS + Supabase (free) + Groq API + Vercel

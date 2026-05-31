@@ -73,6 +73,19 @@ function AppContent() {
 
     const PageComponent = pages[state.currentPage] || Dashboard;
 
+    // Show loading spinner while cloud data loads
+    if (state._loading) {
+        return (
+            <div className="min-h-screen bg-bg-light dark:bg-bg-dark flex items-center justify-center">
+                <div className="text-center space-y-4 animate-fade-in">
+                    <div className="w-12 h-12 border-3 border-primary-light/20 border-t-primary-light rounded-full animate-spin mx-auto" />
+                    <p className="text-sm text-gray-400 font-medium">Loading TaskTrack...</p>
+                    <p className="text-[10px] text-gray-500">Syncing with cloud ☁️</p>
+                </div>
+            </div>
+        );
+    }
+
     if (!state.onboardingComplete) {
         return <OnboardingFlow />;
     }

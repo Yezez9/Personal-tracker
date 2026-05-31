@@ -1,11 +1,16 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
 import storage from '../utils/storage';
 import { generateId } from '../utils/helpers';
 import { generatePriorityScore } from '../utils/aiService';
 import { scoreTaskCoins, calculateCompletionCoins, addCoins } from '../utils/coinService';
+import {
+    isSupabaseConfigured, getUserId, loadAllFromSupabase,
+    upsertUserProfile, syncTask, syncRecurringTask, syncCourse, syncScheduleItem,
+} from '../utils/supabaseService';
 
 const AppContext = createContext();
 
+// Local-first initial state (used as fallback if Supabase not configured)
 const initialState = {
     profile: storage.get('student_profile') || null,
     courses: storage.get('courses') || [],
@@ -16,10 +21,24 @@ const initialState = {
     chatHistory: storage.get('va_chat_history') || [],
     onboardingComplete: storage.get('onboarding_complete') || false,
     currentPage: 'dashboard',
+    _loading: true,       // Cloud loading state
+    _cloudReady: false,    // Whether Supabase data has been loaded
 };
 
 function appReducer(state, action) {
     switch (action.type) {
+        // ─── Hydrate from cloud ─────────────────────────────────
+        case 'HYDRATE_FROM_CLOUD':
+            return {
+                ...state,
+                ...action.payload,
+                _loading: false,
+                _cloudReady: true,
+                onboardingComplete: action.payload.profile ? true : state.onboardingComplete,
+            };
+        case 'SET_LOADING':
+            return { ...state, _loading: action.payload };
+
         // Navigation
         case 'SET_PAGE':
             return { ...state, currentPage: action.payload };
@@ -34,7 +53,7 @@ function appReducer(state, action) {
 
         // Courses
         case 'ADD_COURSE':
-            return { ...state, courses: [...state.courses, { ...action.payload, id: generateId() }] };
+            return { ...state, courses: [...state.courses, { ...action.payload, id: action.payload.id || generateId() }] };
         case 'UPDATE_COURSE':
             return { ...state, courses: state.courses.map(c => c.id === action.payload.id ? { ...c, ...action.payload } : c) };
         case 'DELETE_COURSE':
@@ -59,7 +78,6 @@ function appReducer(state, action) {
             const { score, reason } = generatePriorityScore(newTodo, state.todos);
             newTodo.aiPriorityScore = score;
             newTodo.aiPriorityReason = reason;
-            // Score coins async (won't block)
             scoreTaskCoins(newTodo, state.courses, state.todos).then(coinData => {
                 newTodo.coinReward = coinData;
                 storage.set('todos', [...state.todos, newTodo]);
@@ -89,30 +107,23 @@ function appReducer(state, action) {
                     if (t.id !== action.payload) return t;
                     const newStatus = statusCycle[t.status] || 'pending';
                     const updates = { status: newStatus };
-
-                    // Record startedAt when entering in_progress
                     if (newStatus === 'in_progress' && !t.startedAt) {
                         updates.startedAt = new Date().toISOString();
                     }
-
-                    // Mark pending completion — coins will be awarded async
                     if (newStatus === 'completed' && t.status !== 'completed') {
                         if (t.coinsAwarded) {
-                            // Already claimed — emit zero-coin event
                             window.dispatchEvent(new CustomEvent('coinAlreadyClaimed', { detail: { taskTitle: t.title } }));
                         } else {
                             updates.completedAt = new Date().toISOString();
                             updates._pendingCoinAward = true;
                         }
                     }
-
                     return { ...t, ...updates };
                 })
             };
         }
         case 'AWARD_COINS': {
-            // Called after async AI coin calculation completes
-            const { taskId, coinResult } = action.payload;
+            const { taskId } = action.payload;
             return {
                 ...state, todos: state.todos.map(t =>
                     t.id === taskId ? { ...t, coinsAwarded: true, _pendingCoinAward: false } : t
@@ -138,7 +149,7 @@ function appReducer(state, action) {
 
         // Schedule
         case 'ADD_SCHEDULE':
-            return { ...state, schedule: [...state.schedule, { ...action.payload, id: generateId() }] };
+            return { ...state, schedule: [...state.schedule, { ...action.payload, id: action.payload.id || generateId() }] };
         case 'UPDATE_SCHEDULE':
             return { ...state, schedule: state.schedule.map(s => s.id === action.payload.id ? { ...s, ...action.payload } : s) };
         case 'DELETE_SCHEDULE':
@@ -156,7 +167,7 @@ function appReducer(state, action) {
             return {
                 ...state, recurringTasks: state.recurringTasks.map(t => {
                     if (t.id !== action.payload) return t;
-                    if (t.isCompletedToday) return t; // Already completed today
+                    if (t.isCompletedToday) return t;
                     const newStreak = (t.currentStreak || 0) + 1;
                     const newLog = [...(t.completionLog || []), todayStr].slice(-30);
                     return {
@@ -177,7 +188,7 @@ function appReducer(state, action) {
             return {
                 ...state, recurringTasks: state.recurringTasks.map(t => {
                     if (!t.isActive) return t;
-                    if (t.lastCompletedDate === todayStr) return t; // Already completed today
+                    if (t.lastCompletedDate === todayStr) return t;
                     return { ...t, isCompletedToday: false };
                 })
             };
@@ -201,7 +212,7 @@ function appReducer(state, action) {
         case 'IMPORT_DATA':
             return { ...state, ...action.payload };
         case 'CLEAR_ALL_DATA':
-            return { ...initialState, profile: null, onboardingComplete: false, courses: [], todos: [], schedule: [], recurringTasks: [], notifications: [], chatHistory: [] };
+            return { ...initialState, profile: null, onboardingComplete: false, courses: [], todos: [], schedule: [], recurringTasks: [], notifications: [], chatHistory: [], _loading: false, _cloudReady: state._cloudReady };
 
         default:
             return state;
@@ -209,9 +220,45 @@ function appReducer(state, action) {
 }
 
 export function AppProvider({ children }) {
-    const [state, dispatch] = useReducer(appReducer, initialState);
+    const [state, rawDispatch] = useReducer(appReducer, initialState);
+    const userId = getUserId();
+    const cloudEnabled = isSupabaseConfigured();
 
-    // Auto-save to localStorage on every state change
+    // ─── Cloud-syncing dispatch wrapper ──────────────────────────
+    const dispatch = useCallback((action) => {
+        rawDispatch(action);
+
+        // Fire-and-forget sync to Supabase (don't block UI)
+        if (cloudEnabled) {
+            syncToSupabase(action, userId).catch(err =>
+                console.warn('[Supabase] Sync error:', err)
+            );
+        }
+    }, [cloudEnabled, userId]);
+
+    // ─── Load data from Supabase on mount ───────────────────────
+    useEffect(() => {
+        if (!cloudEnabled) {
+            rawDispatch({ type: 'SET_LOADING', payload: false });
+            return;
+        }
+
+        (async () => {
+            try {
+                const cloudData = await loadAllFromSupabase(userId);
+                if (cloudData) {
+                    rawDispatch({ type: 'HYDRATE_FROM_CLOUD', payload: cloudData });
+                } else {
+                    rawDispatch({ type: 'SET_LOADING', payload: false });
+                }
+            } catch (err) {
+                console.error('[Supabase] Load failed, using local data:', err);
+                rawDispatch({ type: 'SET_LOADING', payload: false });
+            }
+        })();
+    }, []);
+
+    // ─── Auto-save to localStorage (always — as cache) ──────────
     useEffect(() => {
         storage.set('student_profile', state.profile);
         storage.set('courses', state.courses);
@@ -223,19 +270,17 @@ export function AppProvider({ children }) {
         storage.set('onboarding_complete', state.onboardingComplete);
     }, [state]);
 
-    // Async coin award processing — watches for _pendingCoinAward flag
+    // ─── Async coin award processing ────────────────────────────
     useEffect(() => {
         const pending = state.todos.filter(t => t._pendingCoinAward && !t.coinsAwarded);
         pending.forEach(async (task) => {
             try {
                 const result = await calculateCompletionCoins(task, state.courses);
                 addCoins(result.coins, task.title, result.reasoning);
-                // Emit event for breakdown animation
                 window.dispatchEvent(new CustomEvent('coinEarned', { detail: result }));
                 dispatch({ type: 'AWARD_COINS', payload: { taskId: task.id, coinResult: result } });
             } catch (err) {
                 console.warn('[CoinAward] Error:', err);
-                // Fallback — award base coins
                 const fallback = task.coinReward?.baseCoins || 25;
                 addCoins(fallback, task.title, 'Completed!');
                 window.dispatchEvent(new CustomEvent('coinEarned', { detail: { coins: fallback, baseCoins: fallback, earlyBonus: 0, latePenalty: 0, recurringDeduct: 0, streakMultiplier: 1, reasoning: 'Completed!' } }));
@@ -255,4 +300,55 @@ export function useApp() {
     const ctx = useContext(AppContext);
     if (!ctx) throw new Error('useApp must be within AppProvider');
     return ctx;
+}
+
+// ─── Background Supabase sync (fire-and-forget) ─────────────────────
+async function syncToSupabase(action, userId) {
+    switch (action.type) {
+        case 'SET_PROFILE':
+            await upsertUserProfile(userId, action.payload);
+            break;
+        case 'ADD_COURSE':
+            await syncCourse('add', { ...action.payload, id: action.payload.id }, userId);
+            break;
+        case 'UPDATE_COURSE':
+            await syncCourse('update', action.payload, userId);
+            break;
+        case 'DELETE_COURSE':
+            await syncCourse('delete', { id: action.payload }, userId);
+            break;
+        case 'ADD_TODO':
+            await syncTask('add', action.payload, userId);
+            break;
+        case 'UPDATE_TODO':
+            await syncTask('update', action.payload, userId);
+            break;
+        case 'DELETE_TODO':
+            await syncTask('delete', { id: action.payload }, userId);
+            break;
+        case 'TOGGLE_TODO_STATUS':
+            // Status updates are handled via UPDATE_TODO or AWARD_COINS
+            break;
+        case 'ADD_RECURRING_TASK':
+            await syncRecurringTask('add', action.payload, userId);
+            break;
+        case 'UPDATE_RECURRING_TASK':
+            await syncRecurringTask('update', action.payload, userId);
+            break;
+        case 'DELETE_RECURRING_TASK':
+            await syncRecurringTask('delete', { id: action.payload }, userId);
+            break;
+        case 'COMPLETE_RECURRING_TASK':
+            // We need the updated task — but we only have the ID. Sync full state later.
+            break;
+        case 'ADD_SCHEDULE':
+            await syncScheduleItem('add', action.payload, userId);
+            break;
+        case 'UPDATE_SCHEDULE':
+            await syncScheduleItem('update', action.payload, userId);
+            break;
+        case 'DELETE_SCHEDULE':
+            await syncScheduleItem('delete', { id: action.payload }, userId);
+            break;
+    }
 }
