@@ -21,7 +21,7 @@ const initialState = {
     chatHistory: storage.get('va_chat_history') || [],
     onboardingComplete: storage.get('onboarding_complete') || false,
     currentPage: 'dashboard',
-    _loading: true,       // Cloud loading state
+    _loading: false,       // Set to true only when actively fetching from Supabase
     _cloudReady: false,    // Whether Supabase data has been loaded
 };
 
@@ -238,10 +238,14 @@ export function AppProvider({ children }) {
 
     // ─── Load data from Supabase on mount ───────────────────────
     useEffect(() => {
-        if (!cloudEnabled) {
+        if (!cloudEnabled) return;
+
+        rawDispatch({ type: 'SET_LOADING', payload: true });
+
+        // Safety timeout — never stay on loading screen more than 8 seconds
+        const timeout = setTimeout(() => {
             rawDispatch({ type: 'SET_LOADING', payload: false });
-            return;
-        }
+        }, 8000);
 
         (async () => {
             try {
@@ -254,8 +258,12 @@ export function AppProvider({ children }) {
             } catch (err) {
                 console.error('[Supabase] Load failed, using local data:', err);
                 rawDispatch({ type: 'SET_LOADING', payload: false });
+            } finally {
+                clearTimeout(timeout);
             }
         })();
+
+        return () => clearTimeout(timeout);
     }, []);
 
     // ─── Auto-save to localStorage (always — as cache) ──────────
