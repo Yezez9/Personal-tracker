@@ -1,13 +1,13 @@
 import React from 'react';
 import { useApp } from '../../contexts/AppContext';
-import { Home, CheckSquare, FolderOpen, CalendarDays, BookOpen, Settings } from 'lucide-react';
+import { Home, CheckSquare, FolderOpen, CalendarDays, Repeat, Settings } from 'lucide-react';
 
 const tabs = [
     { id: 'dashboard', icon: Home, label: 'Home' },
     { id: 'todos', icon: CheckSquare, label: 'Tasks' },
     { id: 'courses', icon: FolderOpen, label: 'Courses' },
     { id: 'schedule', icon: CalendarDays, label: 'Schedule' },
-    { id: 'studysets', icon: BookOpen, label: 'Study' },
+    { id: 'recurring', icon: Repeat, label: 'Habits' },
     { id: 'settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -15,7 +15,7 @@ export default function MobileNav() {
     const { state, dispatch } = useApp();
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-surface-dark/95 backdrop-blur-xl border-t border-gray-200 dark:border-border-dark"
+        <nav className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-sidebar-dark/95 backdrop-blur-xl border-t border-gray-200 dark:border-border-dark/50"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
             <div className="flex items-center justify-around h-16 px-1">
                 {tabs.map(tab => {

@@ -122,7 +122,7 @@ export default function StudySets() {
                         const mastered = set.cards?.filter(c => c.mastered).length || 0;
                         const total = set.cards?.length || 0;
                         return (
-                            <div key={set.id} className="rounded-2xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-border-dark p-5 card-hover">
+                            <div key={set.id} className="glass-card p-5 card-hover">
                                 <div className="flex items-start justify-between mb-3">
                                     <div><h3 className="text-sm font-bold dark:text-txt-dark">{set.title}</h3>
                                         {course && <p className="text-[10px] mt-0.5" style={{ color: course.color }}>{course.icon} {course.name}</p>}
@@ -142,8 +142,8 @@ export default function StudySets() {
 
             {showAdd && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-                    <div className="relative glass-strong rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                    <div className="relative glass-card bg-white dark:bg-surface-dark rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
                         <div className="p-6 space-y-4">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-lg font-bold dark:text-txt-dark">New Study Set</h2>

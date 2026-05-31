@@ -14,9 +14,7 @@ import TodoList from './pages/TodoList';
 import CourseFolders from './pages/CourseFolders';
 import ClassSchedule from './pages/ClassSchedule';
 import CalendarView from './pages/CalendarView';
-import StudySets from './pages/StudySets';
-import Bookmarks from './pages/Bookmarks';
-import Countdowns from './pages/Countdowns';
+import RecurringTasks from './pages/RecurringTasks';
 import Settings from './pages/Settings';
 
 function AppContent() {
@@ -47,14 +45,18 @@ function AppContent() {
         // Rescore all tasks daily
         dispatch({ type: 'RESCORE_ALL_TODOS' });
 
+        // Midnight reset for recurring tasks
+        import('./utils/recurringTaskService').then(({ performMidnightReset }) => {
+            performMidnightReset(state.recurringTasks, dispatch, state.profile?.name);
+        });
+
         // Initialize AI push notifications
         initializeNotifications({
             todos: state.todos,
             schedule: state.schedule,
             courses: state.courses,
             profile: state.profile,
-            countdowns: state.countdowns || [],
-            studySets: state.studySets || [],
+            recurringTasks: state.recurringTasks || [],
         });
     }, []);
 
@@ -64,9 +66,7 @@ function AppContent() {
         courses: CourseFolders,
         schedule: ClassSchedule,
         calendar: CalendarView,
-        studysets: StudySets,
-        bookmarks: Bookmarks,
-        countdowns: Countdowns,
+        recurring: RecurringTasks,
         settings: Settings,
         ai: () => { dispatch({ type: 'SET_PAGE', payload: 'dashboard' }); return null; },
     };
@@ -91,7 +91,7 @@ function AppContent() {
                 </div>
             )}
 
-            <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[70px]' : 'lg:ml-[250px]'}`}>
+            <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-[70px]' : 'lg:ml-[220px]'}`}>
                 <Header onMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)} />
                 <main className="p-4 lg:p-6 pb-24 lg:pb-6 min-h-[calc(100vh-56px)]">
                     <PageComponent />

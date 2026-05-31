@@ -11,12 +11,14 @@ export default {
                 primary: { light: '#6C63FF', DEFAULT: '#6C63FF', dark: '#7C73FF' },
                 secondary: { light: '#FF6584', DEFAULT: '#FF6584', dark: '#FF7A9A' },
                 accent: { light: '#43D8A0', DEFAULT: '#43D8A0', dark: '#4EEDB5' },
-                surface: { light: '#FFFFFF', dark: '#1A1A2E' },
-                surface2: { dark: '#242438' },
-                bg: { light: '#F7F8FC', dark: '#0F0F1A' },
+                surface: { light: '#FFFFFF', dark: '#141428' },
+                surface2: { dark: '#1C1C36' },
+                surface3: { dark: '#232340' },
+                bg: { light: '#F7F8FC', dark: '#0D0D1A' },
+                sidebar: { dark: '#0F0F1C' },
                 txt: { light: '#1A1A2E', dark: '#F1F1FF' },
-                'txt-secondary': { light: '#6B7280', dark: '#9CA3AF' },
-                border: { light: '#E5E7EB', dark: '#2E2E4A' },
+                'txt-secondary': { light: '#6B7280', dark: '#8B8BA3' },
+                border: { light: '#E5E7EB', dark: '#2A2A4A' },
             },
             fontFamily: {
                 inter: ['Inter', 'system-ui', 'sans-serif'],
@@ -27,8 +29,10 @@ export default {
                 'slide-up': 'slideUp 0.3s ease-out',
                 'scale-in': 'scaleIn 0.2s ease-out',
                 'pulse-slow': 'pulse 3s ease-in-out infinite',
+                'pulse-subtle': 'pulseSubtle 2s ease-in-out infinite',
                 'float': 'float 3s ease-in-out infinite',
                 'flip': 'flip 0.6s ease-in-out',
+                'glow': 'glow 2s ease-in-out infinite alternate',
             },
             keyframes: {
                 fadeIn: {
@@ -54,6 +58,14 @@ export default {
                 flip: {
                     '0%': { transform: 'rotateY(0deg)' },
                     '100%': { transform: 'rotateY(180deg)' },
+                },
+                glow: {
+                    '0%': { boxShadow: '0 0 5px rgba(108,99,255,0.3)' },
+                    '100%': { boxShadow: '0 0 20px rgba(108,99,255,0.15)' },
+                },
+                pulseSubtle: {
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(239,68,68,0)' },
+                    '50%': { boxShadow: '0 0 8px 2px rgba(239,68,68,0.15)' },
                 },
             },
         },

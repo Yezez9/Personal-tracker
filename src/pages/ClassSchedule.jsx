@@ -19,8 +19,8 @@ function AddClassModal({ show, onClose, courses, dispatch, editEntry }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative glass-strong rounded-2xl w-full max-w-md shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative glass-card bg-white dark:bg-surface-dark rounded-2xl w-full max-w-md shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
                 <div className="p-6 space-y-4">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-bold dark:text-txt-dark">{editEntry ? 'Edit Class' : 'Add Class'}</h2>
@@ -91,29 +91,29 @@ export default function ClassSchedule() {
     const currentTimeTop = ((currentHour - 7) * 60 + currentMinute) * (60 / 60);
 
     return (
-        <div className="space-y-4 animate-fade-in">
+        <div className="space-y-5 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold dark:text-txt-dark">Class Schedule</h1>
-                    <p className="text-sm text-gray-400">{schedule.length} classes</p>
+                    <h1 className="text-2xl font-bold dark:text-txt-dark tracking-tight">Class Schedule</h1>
+                    <p className="text-sm text-gray-400">{schedule.length} classes this semester</p>
                 </div>
                 <div className="flex gap-2">
                     <div className="flex bg-gray-100 dark:bg-surface2-dark rounded-xl p-0.5">
                         {[{ id: 'week', icon: Grid3X3 }, { id: 'list', icon: List }].map(v => (
                             <button key={v.id} onClick={() => setViewMode(v.id)}
-                                className={`p-2 rounded-lg transition-all ${viewMode === v.id ? 'bg-white dark:bg-surface-dark shadow-sm' : 'text-gray-400'}`}>
+                                className={`p-2 rounded-lg transition-all ${viewMode === v.id ? 'bg-white dark:bg-surface-dark shadow-sm text-primary-light' : 'text-gray-400'}`}>
                                 <v.icon size={16} />
                             </button>
                         ))}
                     </div>
-                    <button onClick={() => { setEditEntry(null); setShowAddModal(true); }} className="btn-primary flex items-center gap-2">
+                    <button onClick={() => { setEditEntry(null); setShowAddModal(true); }} className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-white text-sm shadow-lg transition-all hover:opacity-90 active:scale-95" style={{ background: 'linear-gradient(135deg, #6C63FF, #9B59B6)' }}>
                         <Plus size={16} /> Add Class
                     </button>
                 </div>
             </div>
 
             {viewMode === 'week' ? (
-                <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark overflow-hidden">
+                <div className="glass-card overflow-hidden">
                     <div className="overflow-x-auto">
                         <div className="min-w-[700px]">
                             {/* Day headers */}
@@ -188,7 +188,7 @@ export default function ClassSchedule() {
                                     const course = courses.find(c => c.id === entry.courseId);
                                     return (
                                         <div key={entry.id} onClick={() => { setEditEntry(entry); setShowAddModal(true); }}
-                                            className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-border-dark mb-2 card-hover cursor-pointer">
+                                            className="flex items-center gap-3 p-3 rounded-xl glass-card mb-2 card-hover cursor-pointer">
                                             <div className="w-1.5 h-10 rounded-full" style={{ backgroundColor: entry.color || course?.color }} />
                                             <div className="flex-1">
                                                 <p className="text-sm font-medium dark:text-txt-dark">{course?.icon} {course?.name || 'Class'}</p>

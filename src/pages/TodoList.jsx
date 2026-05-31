@@ -73,8 +73,8 @@ function TaskModal({ show, onClose, courses, dispatch, editTask }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative glass-strong rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative glass-card rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl animate-scale-in bg-white dark:bg-surface-dark" onClick={e => e.stopPropagation()}>
                 <div className="p-6">
                     <div className="flex items-center justify-between mb-5">
                         <h2 className="text-lg font-bold dark:text-txt-dark">{isEdit ? 'Edit Task' : 'Add Task'}</h2>
@@ -235,7 +235,7 @@ function TaskModal({ show, onClose, courses, dispatch, editTask }) {
             {showDeleteConfirm && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
                     <div className="absolute inset-0 bg-black/50" onClick={() => setShowDeleteConfirm(false)} />
-                    <div className="relative bg-white dark:bg-surface-dark rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scale-in">
+                    <div className="relative glass-card bg-white dark:bg-surface-dark rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-scale-in">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
                                 <AlertTriangle size={20} className="text-red-500" />
@@ -323,11 +323,11 @@ function TaskItem({ task, courses, dispatch, expanded, onToggle, onEdit }) {
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
                 style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 || swipeOffset === -130 ? 'transform 0.25s ease' : 'none' }}
-                className={`relative z-10 border transition-all duration-200 bg-white dark:bg-surface-dark card-hover ${task.status === 'completed'
-                    ? 'border-gray-100 dark:border-border-dark/50'
+                className={`relative z-10 rounded-xl transition-all duration-200 glass-card card-hover border-l-[3px] ${task.status === 'completed'
+                    ? 'border-l-green-500/50 opacity-60'
                     : task.status === 'in_progress'
-                        ? 'border-amber-200 dark:border-amber-800/30'
-                        : 'border-gray-200 dark:border-border-dark'
+                        ? 'border-l-amber-500'
+                        : task.priority === 'high' ? 'border-l-red-500' : task.priority === 'medium' ? 'border-l-yellow-500' : 'border-l-accent-light'
                     }`}>
                 
                 {/* Status overlays to prevent transparent background bleeding */}
@@ -516,26 +516,30 @@ export default function TodoList() {
     const closeModal = () => { setEditingTask(null); setShowModal(false); };
 
     return (
-        <div className="space-y-4 animate-fade-in">
+        <div className="space-y-5 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold dark:text-txt-dark">To-Do List</h1>
-                    <p className="text-sm text-gray-400">{todos.filter(t => t.status !== 'completed').length} active tasks</p>
+                    <h1 className="text-2xl font-bold dark:text-txt-dark tracking-tight">TO-DO LIST</h1>
+                    <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-gray-400 flex items-center gap-1">📅 {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        <span className="text-xs text-gray-400">•</span>
+                        <span className="text-xs text-accent-light flex items-center gap-1">✅ {todos.filter(t => t.status !== 'completed').length} Tasks Pending</span>
+                    </div>
                 </div>
-                <button onClick={openAdd} className="btn-primary flex items-center gap-2">
-                    <Plus size={16} /> Add Task
+                <button onClick={openAdd} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white text-sm shadow-lg transition-all hover:opacity-90 active:scale-95" style={{ background: 'linear-gradient(135deg, #6C63FF, #9B59B6)' }}>
+                    <Plus size={16} /> + Add Task
                 </button>
             </div>
 
             {/* Filters */}
             <div className="flex flex-wrap gap-2">
-                {['all', 'today', 'upcoming', 'in_progress', 'pending', 'completed'].map(f => (
-                    <button key={f} onClick={() => setFilter(f)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${filter === f
-                            ? f === 'in_progress' ? 'bg-amber-500/10 text-amber-500' : f === 'pending' ? 'bg-purple-500/10 text-purple-500' : 'bg-primary-light/10 text-primary-light dark:bg-primary-dark/10 dark:text-primary-dark'
-                            : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5'
+                {[{ key: 'all', label: 'All' }, { key: 'today', label: 'Urgent' }, { key: 'pending', label: 'Low Effort' }, { key: 'upcoming', label: '✨ AI Recommended' }].map(f => (
+                    <button key={f.key} onClick={() => setFilter(f.key)}
+                        className={`px-4 py-2 rounded-full text-xs font-semibold transition-all border ${filter === f.key
+                            ? 'bg-primary-light text-white border-primary-light shadow-md shadow-primary-light/20'
+                            : 'border-border-dark/50 text-gray-400 hover:border-primary-light/50 hover:text-gray-300 dark:bg-transparent'
                             }`}>
-                        {f === 'in_progress' ? '⏳ In Progress' : f === 'pending' ? '✨ Pending' : f.charAt(0).toUpperCase() + f.slice(1)}
+                        {f.label}
                     </button>
                 ))}
             </div>
@@ -557,14 +561,14 @@ export default function TodoList() {
             {groupOrder
                 .filter(g => grouped[g]?.length > 0)
                 .map(group => (
-                    <div key={group} className="space-y-2">
+                    <div key={group} className="space-y-2.5">
                         {group !== '_all' && (
-                            <div className="flex items-center gap-2 pt-2">
-                                <h3 className={`text-xs font-bold tracking-wider ${groupColors[group] || 'text-gray-400'}`}>
+                            <div className="flex items-center gap-3 pt-3">
+                                <h3 className={`text-[11px] font-extrabold tracking-[0.15em] uppercase ${groupColors[group] || 'text-gray-400'}`}>
                                     {group}
                                 </h3>
-                                <div className="flex-1 h-px bg-gray-100 dark:bg-border-dark" />
-                                <span className="text-[10px] text-gray-400">{grouped[group].length}</span>
+                                <div className="flex-1 h-px bg-gray-100 dark:bg-border-dark/50" />
+                                <span className="text-[10px] text-gray-500">{grouped[group].length}</span>
                             </div>
                         )}
                         {grouped[group].map(task => (

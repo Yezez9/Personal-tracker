@@ -17,7 +17,7 @@ function CountdownCard({ countdown, onDelete }) {
                 : 'from-green-500 to-emerald-500';
 
     return (
-        <div className="rounded-2xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-border-dark overflow-hidden card-hover group">
+        <div className="glass-card overflow-hidden card-hover group">
             <div className={`h-1.5 bg-gradient-to-r ${urgencyColor}`} />
             <div className="p-5">
                 <div className="flex items-start justify-between mb-4">
@@ -69,8 +69,8 @@ export default function Countdowns() {
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold dark:text-txt-dark">Countdowns</h1>
-                <button onClick={() => setShowAdd(true)} className="btn-primary flex items-center gap-2"><Plus size={16} /> Add Countdown</button>
+                <h1 className="text-2xl font-bold dark:text-txt-dark tracking-tight">Countdowns</h1>
+                <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-white text-sm shadow-lg transition-all hover:opacity-90 active:scale-95" style={{ background: 'linear-gradient(135deg, #6C63FF, #9B59B6)' }}><Plus size={16} /> Add Countdown</button>
             </div>
             {sorted.length === 0 ? (
                 <div className="text-center py-16"><p className="text-4xl mb-3">⏳</p><p className="text-sm text-gray-400">No countdowns yet. Track your big milestones!</p></div>
@@ -81,8 +81,8 @@ export default function Countdowns() {
             )}
             {showAdd && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-                    <div className="relative glass-strong rounded-2xl w-full max-w-md shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                    <div className="relative glass-card bg-white dark:bg-surface-dark rounded-2xl w-full max-w-md shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
                         <div className="p-6 space-y-4">
                             <div className="flex items-center justify-between"><h2 className="text-lg font-bold dark:text-txt-dark">Add Countdown</h2><button onClick={() => setShowAdd(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5"><X size={18} className="dark:text-gray-400" /></button></div>
                             <input placeholder="Event title *" value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} className="input-field" />

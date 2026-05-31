@@ -30,8 +30,8 @@ export default function Bookmarks() {
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold dark:text-txt-dark">Bookmarks</h1>
-                <button onClick={() => setShowAdd(true)} className="btn-primary flex items-center gap-2"><Plus size={16} /> Add Bookmark</button>
+                <h1 className="text-2xl font-bold dark:text-txt-dark tracking-tight">Bookmarks</h1>
+                <button onClick={() => setShowAdd(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-white text-sm shadow-lg transition-all hover:opacity-90 active:scale-95" style={{ background: 'linear-gradient(135deg, #6C63FF, #9B59B6)' }}><Plus size={16} /> Add Bookmark</button>
             </div>
             <div className="flex gap-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
@@ -50,7 +50,7 @@ export default function Bookmarks() {
                     {filtered.map(bm => {
                         const course = courses.find(c => c.id === bm.courseId);
                         return (
-                            <div key={bm.id} className="rounded-2xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-border-dark p-4 card-hover group" style={{ borderLeftColor: course?.color, borderLeftWidth: course ? '3px' : undefined }}>
+                            <div key={bm.id} className="glass-card p-4 card-hover group" style={{ borderLeftColor: course?.color, borderLeftWidth: course ? '3px' : undefined }}>
                                 <div className="flex items-start justify-between mb-2">
                                     <h3 className="text-sm font-semibold dark:text-txt-dark truncate flex-1 mr-2">{bm.title}</h3>
                                     <div className="flex gap-1">
@@ -71,8 +71,8 @@ export default function Bookmarks() {
             )}
             {showAdd && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-                    <div className="relative glass-strong rounded-2xl w-full max-w-md shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                    <div className="relative glass-card bg-white dark:bg-surface-dark rounded-2xl w-full max-w-md shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
                         <div className="p-6 space-y-4">
                             <div className="flex items-center justify-between"><h2 className="text-lg font-bold dark:text-txt-dark">Add Bookmark</h2><button onClick={() => setShowAdd(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5"><X size={18} className="dark:text-gray-400" /></button></div>
                             <input placeholder="URL *" value={form.url} onChange={e => setForm(p => ({ ...p, url: e.target.value }))} className="input-field" />

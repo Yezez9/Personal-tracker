@@ -80,6 +80,22 @@ export function addCoins(amount, taskTitle, reason) {
     storage.set('coin_wallet', wallet);
     return wallet;
 }
+// ─── Deduct Coins (penalties — never go negative) ───────────────────
+export function deductCoins(amount, taskTitle, reason) {
+    const wallet = getCoinWallet();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const deduction = Math.min(amount, wallet.totalCoins || 0);
+    wallet.totalCoins = Math.max(0, (wallet.totalCoins || 0) - deduction);
+    wallet.weeklyCoins = Math.max(0, (wallet.weeklyCoins || 0) - deduction);
+    wallet.history = [
+        { date: todayStr, task: taskTitle, coins: -deduction, reason },
+        ...(wallet.history || []).slice(0, 19)
+    ];
+
+    storage.set('coin_wallet', wallet);
+    return wallet;
+}
 
 // ─── AI Coin Scoring (on task creation) ─────────────────────────────
 export async function scoreTaskCoins(task, courses, allTodos) {

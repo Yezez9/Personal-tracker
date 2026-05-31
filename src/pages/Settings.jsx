@@ -106,7 +106,7 @@ export default function Settings() {
             <h1 className="text-2xl font-bold dark:text-txt-dark">Settings</h1>
 
             {/* Profile */}
-            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
+            <div className="glass-card p-6">
                 <h2 className="text-sm font-semibold dark:text-txt-dark mb-4 flex items-center gap-2"><User size={16} className="text-primary-light dark:text-primary-dark" /> Student Profile</h2>
                 <div className="flex items-center gap-4 mb-5">
                     <div className="relative">
@@ -127,7 +127,7 @@ export default function Settings() {
             </div>
 
             {/* App Installation */}
-            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
+            <div className="glass-card p-6">
                 <h2 className="text-sm font-semibold dark:text-txt-dark mb-4 flex items-center gap-2">
                     <Smartphone size={16} className="text-accent-light dark:text-accent-dark" /> Install Apps
                 </h2>
@@ -161,7 +161,7 @@ export default function Settings() {
             </div>
 
             {/* Theme */}
-            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
+            <div className="glass-card p-6">
                 <h2 className="text-sm font-semibold dark:text-txt-dark mb-4">Appearance</h2>
                 <div className="flex gap-3">
                     {[
@@ -180,7 +180,7 @@ export default function Settings() {
             </div>
 
             {/* Notifications */}
-            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
+            <div className="glass-card p-6">
                 <h2 className="text-sm font-semibold dark:text-txt-dark mb-4 flex items-center gap-2">
                     <Bell size={16} className="text-secondary-light dark:text-secondary-dark" /> Notifications
                 </h2>
@@ -236,7 +236,7 @@ export default function Settings() {
             </div>
 
             {/* Rewards & Gamification */}
-            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
+            <div className="glass-card p-6">
                 <h2 className="text-sm font-semibold dark:text-txt-dark mb-4 flex items-center gap-2">
                     <Trophy size={16} className="text-yellow-500" /> Rewards & Gamification
                 </h2>
@@ -300,7 +300,7 @@ export default function Settings() {
                     );
                 })()}
             </div>
-            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-6">
+            <div className="glass-card p-6">
                 <h2 className="text-sm font-semibold dark:text-txt-dark mb-4">Data Management</h2>
                 <div className="space-y-3">
                     <button onClick={exportData} className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-left">

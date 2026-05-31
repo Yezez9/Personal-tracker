@@ -117,7 +117,7 @@ export async function generateDailyNotifications(context) {
     const settings = storage.get('notification_settings') || {};
     if (settings.dailyNotifications === false) return;
 
-    const { todos = [], schedule = [], courses = [], profile = {}, countdowns = [] } = context;
+    const { todos = [], schedule = [], courses = [], profile = {}, recurringTasks = [] } = context;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
@@ -133,18 +133,18 @@ export async function generateDailyNotifications(context) {
     const todayClasses = schedule.filter(s => s.day === dayName)
         .map(s => `${courses.find(c => c.id === s.courseId)?.name || 'Class'} at ${s.startTime}`).join(', ');
 
-    const upcomingCountdowns = (countdowns || [])
-        .map(c => {
-            const d = Math.ceil((new Date(c.date || c.targetDate) - today) / (1000 * 60 * 60 * 24));
-            return d > 0 && d <= 7 ? `${c.title} in ${d} days` : null;
-        }).filter(Boolean).join(', ');
+    const recurringTaskSummary = (recurringTasks || [])
+        .filter(t => t.isActive && !t.isCompletedToday)
+        .map(t => `"${t.title}" (${t.currentStreak || 0}-day streak, penalty: ${t.penaltyCoins || 10}🪙)`)
+        .join(', ');
 
     const systemPrompt = `You are a fun, witty notification writer for a student app called TaskTrack. Look at this student data:
 - Student: ${profile?.name || 'Student'}
 - Today: ${dayName}, ${todayStr}
 - Tasks: ${taskSummary || 'No active tasks'}
 - Classes today: ${todayClasses || 'None'}
-- Upcoming events: ${upcomingCountdowns || 'None'}
+- Upcoming events: None
+- Recurring habits not done today: ${recurringTaskSummary || 'All done or none set'}
 
 Write 3 short push notification messages for today — one for morning, one for afternoon, one for evening. Each must be unique, reference their actual tasks or exams by name, and have personality and light humor like Duolingo. Include emojis. Keep each under 120 characters.
 
@@ -226,6 +226,17 @@ export async function initializeNotifications(context) {
     if (lastDate !== todayStr) {
         await generateDailyNotifications(context);
         await generateStreakReminder();
+
+        // Schedule 7 PM recurring task penalty reminders
+        const recurringTasks = context.recurringTasks || [];
+        const profileName = context.profile?.name || 'Student';
+        recurringTasks.filter(t => t.isActive && !t.isCompletedToday).forEach(task => {
+            const tag = `tasktrack-recurring-${task.id}`;
+            const body = `Hey ${profileName}, you still haven't done "${task.title}" today — you'll lose ${task.penaltyCoins || 10} 🪙 at midnight. Don't break your ${task.currentStreak || 0} day streak!`;
+            scheduleAt(19, 0, () => {
+                showNotification('⚠️ Habit at Risk!', body, tag);
+            }, '⚠️ Habit at Risk!', body, tag);
+        });
     }
 }
 

@@ -78,11 +78,11 @@ export default function AIAssistant() {
 
             {/* Chat panel — iMessage-style */}
             {open && (
-                <div className="fixed bottom-36 lg:bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[540px] max-h-[calc(100vh-10rem)] bg-white dark:bg-[#1c1c1e] rounded-2xl border border-gray-200 dark:border-gray-700/50 shadow-2xl flex flex-col overflow-hidden animate-scale-in"
-                    style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)' }}>
+                <div className="fixed bottom-36 lg:bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] h-[540px] max-h-[calc(100vh-10rem)] bg-white dark:bg-sidebar-dark rounded-2xl border border-gray-200 dark:border-border-dark/50 shadow-2xl flex flex-col overflow-hidden animate-scale-in"
+                    style={{ boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(108,99,255,0.1)' }}>
 
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-[#1c1c1e]/80 backdrop-blur-xl">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-border-dark/50 bg-white/80 dark:bg-sidebar-dark/80 backdrop-blur-xl">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center shadow-md shadow-primary-light/20">
                                 <Sparkles size={16} className="text-white" />
@@ -134,8 +134,8 @@ export default function AIAssistant() {
                                 <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-slide-up`}>
                                     <div className="max-w-[85%] flex flex-col">
                                         <div className={`px-3.5 py-2.5 text-[13px] leading-relaxed ${isUser
-                                            ? 'bg-primary-light dark:bg-primary-dark text-white rounded-2xl rounded-br-md'
-                                            : 'bg-gray-100 dark:bg-[#2c2c2e] text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-md'
+                                            ? 'text-white rounded-2xl rounded-br-md'
+                                            : 'bg-gray-100 dark:bg-surface2-dark text-gray-800 dark:text-gray-200 rounded-2xl rounded-bl-md'
                                             }`}
                                             style={isUser ? { background: 'linear-gradient(135deg, #6C63FF 0%, #7B73FF 100%)' } : {}}>
                                             {isUser ? (
@@ -158,7 +158,7 @@ export default function AIAssistant() {
                         {/* Typing indicator */}
                         {typing && (
                             <div className="flex justify-start animate-fade-in">
-                                <div className="px-4 py-3.5 rounded-2xl rounded-bl-md bg-gray-100 dark:bg-[#2c2c2e]">
+                                <div className="px-4 py-3.5 rounded-2xl rounded-bl-md bg-gray-100 dark:bg-surface2-dark">
                                     <div className="flex gap-1.5 items-center h-4">
                                         <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: '0ms' }} />
                                         <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -171,7 +171,7 @@ export default function AIAssistant() {
                     </div>
 
                     {/* Input bar */}
-                    <div className="border-t border-gray-100 dark:border-gray-800 p-2.5 bg-white dark:bg-[#1c1c1e]">
+                    <div className="border-t border-gray-100 dark:border-border-dark/50 p-2.5 bg-white dark:bg-sidebar-dark">
                         <div className="flex gap-2 items-end">
                             <input
                                 ref={inputRef}
@@ -179,7 +179,7 @@ export default function AIAssistant() {
                                 onChange={e => setInput(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                                 placeholder="Ask me anything..."
-                                className="flex-1 px-4 py-2.5 rounded-full bg-gray-100 dark:bg-[#2c2c2e] text-[13px] focus:outline-none focus:ring-2 focus:ring-primary-light/30 dark:focus:ring-primary-dark/30 dark:text-white transition-all placeholder:text-gray-400"
+                                className="flex-1 px-4 py-2.5 rounded-full bg-gray-100 dark:bg-surface2-dark text-[13px] focus:outline-none focus:ring-2 focus:ring-primary-light/30 dark:focus:ring-primary-dark/30 dark:text-white transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
                             />
                             <button onClick={sendMessage} disabled={!input.trim() || typing}
                                 className={`p-2.5 rounded-full transition-all duration-200 ${input.trim() && !typing

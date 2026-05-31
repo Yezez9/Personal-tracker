@@ -22,8 +22,8 @@ function CourseModal({ show, onClose, course, dispatch }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-            <div className="relative glass-strong rounded-2xl w-full max-w-md shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative glass-card bg-white dark:bg-surface-dark rounded-2xl w-full max-w-md shadow-2xl animate-scale-in" onClick={e => e.stopPropagation()}>
                 <div className="p-6 space-y-4">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-bold dark:text-txt-dark">{course ? 'Edit Course' : 'Add Course'}</h2>
@@ -294,12 +294,15 @@ export default function CourseFolders() {
         <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold dark:text-txt-dark">Course Folders</h1>
-                    <p className="text-sm text-gray-400">{courses.length} courses</p>
+                    <h1 className="text-2xl font-bold dark:text-txt-dark tracking-tight">Course Folders</h1>
+                    <p className="text-sm text-gray-400">Manage your academic universe</p>
                 </div>
-                <button onClick={() => { setEditCourse(null); setShowModal(true); }} className="btn-primary flex items-center gap-2">
-                    <Plus size={16} /> Add Course
-                </button>
+                <div className="flex items-center gap-3">
+                    <span className="text-xs px-3 py-1.5 rounded-lg bg-accent-light/10 text-accent-light font-semibold">{courses.length} Active Courses</span>
+                    <button onClick={() => { setEditCourse(null); setShowModal(true); }} className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-white text-sm shadow-lg transition-all hover:opacity-90 active:scale-95" style={{ background: 'linear-gradient(135deg, #6C63FF, #9B59B6)' }}>
+                        <Plus size={16} /> Add Course
+                    </button>
+                </div>
             </div>
 
             {courses.length === 0 ? (
@@ -308,44 +311,64 @@ export default function CourseFolders() {
                     <p className="text-sm text-gray-400">No courses yet. Add your first course!</p>
                 </div>
             ) : (
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     {courses.map(course => {
                         const taskCount = todos.filter(t => t.course === course.id && t.status !== 'completed').length;
-                        const nextDeadline = todos.filter(t => t.course === course.id && t.status !== 'completed' && t.dueDate)
-                            .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+                        const totalTasks = todos.filter(t => t.course === course.id).length;
+                        const completedTasks = todos.filter(t => t.course === course.id && t.status === 'completed').length;
+                        const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
                         return (
                             <div key={course.id}
-                                className="rounded-2xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-border-dark overflow-hidden card-hover cursor-pointer group"
+                                className="glass-card overflow-hidden card-hover cursor-pointer group"
                                 onClick={() => setSelectedCourse(course.id)}>
-                                <div className="h-2" style={{ backgroundColor: course.color }} />
-                                <div className="p-5">
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-2xl">{course.icon}</span>
-                                            <div>
-                                                <h3 className="text-sm font-bold dark:text-txt-dark">{course.name}</h3>
-                                                <p className="text-[11px] text-gray-400">{course.code}</p>
-                                            </div>
+                                {/* Colored header area */}
+                                <div className="relative h-28 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${course.color}20, ${course.color}08)` }}>
+                                    <span className="text-4xl opacity-80">{course.icon}</span>
+                                    {course.code && (
+                                        <span className="absolute top-3 right-3 text-[9px] px-2 py-0.5 rounded-full bg-accent-light/15 text-accent-light font-semibold">
+                                            {course.code}
+                                        </span>
+                                    )}
+                                    <button onClick={e => { e.stopPropagation(); setEditCourse(course); setShowModal(true); }}
+                                        className="absolute top-3 left-3 p-1.5 rounded-lg hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all">
+                                        <Edit3 size={14} className="text-gray-400" />
+                                    </button>
+                                </div>
+
+                                <div className="p-4">
+                                    <h3 className="text-sm font-bold dark:text-txt-dark mb-0.5 truncate">{course.name}</h3>
+                                    {course.professor && <p className="text-[11px] text-gray-400 mb-3">{course.professor}</p>}
+                                    
+                                    {/* Curriculum Progress */}
+                                    <div className="mb-3">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">Curriculum Progress</span>
+                                            <span className="text-[10px] text-gray-400 font-medium">{progress}%</span>
                                         </div>
-                                        <button onClick={e => { e.stopPropagation(); setEditCourse(course); setShowModal(true); }}
-                                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-all">
-                                            <Edit3 size={14} className="text-gray-400" />
-                                        </button>
+                                        <div className="h-1.5 bg-gray-100 dark:bg-gray-700/30 rounded-full overflow-hidden">
+                                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: course.color }} />
+                                        </div>
                                     </div>
-                                    {course.professor && <p className="text-xs text-gray-400 mb-3">Prof. {course.professor}</p>}
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-xs text-gray-400">{taskCount} active task{taskCount !== 1 ? 's' : ''}</span>
-                                        {nextDeadline && (
-                                            <span className="text-[10px] font-medium" style={{ color: course.color }}>
-                                                {formatRelativeDate(nextDeadline.dueDate)}
-                                            </span>
-                                        )}
-                                    </div>
+
+                                    <button className="text-xs font-semibold text-gray-400 hover:text-primary-light dark:hover:text-primary-dark transition-colors flex items-center gap-1">
+                                        View Resources <span>→</span>
+                                    </button>
                                 </div>
                             </div>
                         );
                     })}
+
+                    {/* Add Course Card */}
+                    <button
+                        onClick={() => { setEditCourse(null); setShowModal(true); }}
+                        className="rounded-2xl border-2 border-dashed border-border-dark/50 hover:border-primary-light/30 flex flex-col items-center justify-center min-h-[200px] transition-all group cursor-pointer"
+                    >
+                        <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-surface2-dark flex items-center justify-center mb-2 group-hover:bg-primary-light/10 transition-colors">
+                            <Plus size={20} className="text-gray-400 group-hover:text-primary-light transition-colors" />
+                        </div>
+                        <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">Add Course Folder</span>
+                    </button>
                 </div>
             )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useApp } from '../../contexts/AppContext';
-import { Search, Bell, Moon, Sun, Menu, X } from 'lucide-react';
+import { Search, Bell, Moon, Sun, Menu, X, Sparkles } from 'lucide-react';
 import { searchItems } from '../../utils/helpers';
 import Logo from '../Logo';
 
@@ -47,8 +47,8 @@ export default function Header({ onMenuToggle }) {
     };
 
     return (
-        <header className="sticky top-0 z-30 bg-white/80 dark:bg-surface-dark/80 backdrop-blur-xl border-b border-gray-200 dark:border-border-dark">
-            <div className="flex items-center justify-between h-14 px-4">
+        <header className="sticky top-0 z-30 bg-white/80 dark:bg-bg-dark/80 backdrop-blur-xl border-b border-gray-200 dark:border-border-dark/50">
+            <div className="flex items-center justify-between h-14 px-4 lg:px-6">
                 {/* Left: menu + logo on mobile */}
                 <div className="flex items-center gap-3 flex-shrink-0">
                     <button onClick={onMenuToggle} className="lg:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
@@ -60,17 +60,17 @@ export default function Header({ onMenuToggle }) {
                     </div>
                 </div>
 
-                {/* Center: Search (desktop only) */}
-                <div ref={searchRef} className="relative flex-1 max-w-md mx-4 hidden lg:block">
+                {/* Center: Search bar — wide rounded pill */}
+                <div ref={searchRef} className="relative flex-1 max-w-lg mx-6 hidden lg:block">
                     <div className="relative">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search tasks, courses, bookmarks..."
+                            placeholder="Search tasks, courses, or AI help..."
                             value={searchQuery}
                             onChange={e => { setSearchQuery(e.target.value); setShowSearch(true); }}
                             onFocus={() => setShowSearch(true)}
-                            className="w-full pl-10 pr-4 py-2 rounded-xl bg-gray-100 dark:bg-surface2-dark border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light/30 dark:focus:ring-primary-dark/30 dark:text-txt-dark transition-all"
+                            className="w-full pl-11 pr-4 py-2.5 rounded-full bg-gray-100 dark:bg-surface2-dark border border-transparent dark:border-border-dark/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light/20 dark:focus:ring-primary-dark/20 dark:text-txt-dark transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
                         />
                     </div>
                     {showSearch && searchResults.length > 0 && (
@@ -90,17 +90,13 @@ export default function Header({ onMenuToggle }) {
                 </div>
 
                 {/* Right: actions */}
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0">
                     {/* Mobile search icon */}
                     <button
                         onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
                         className="lg:hidden p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
                     >
                         <Search size={18} className="dark:text-gray-300" />
-                    </button>
-
-                    <button onClick={toggleDarkMode} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
-                        {darkMode ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} className="text-gray-500" />}
                     </button>
 
                     {/* Notifications */}
@@ -117,7 +113,7 @@ export default function Header({ onMenuToggle }) {
                             )}
                         </button>
                         {showNotifications && (
-                            <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto bg-white dark:bg-surface-dark rounded-xl shadow-lg border border-gray-200 dark:border-border-dark animate-scale-in">
+                            <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto glass-card shadow-2xl animate-scale-in">
                                 <div className="p-3 border-b border-gray-100 dark:border-border-dark flex items-center justify-between">
                                     <h3 className="text-sm font-semibold dark:text-txt-dark">Notifications</h3>
                                     {state.notifications.length > 0 && (
@@ -144,16 +140,27 @@ export default function Header({ onMenuToggle }) {
                         )}
                     </div>
 
-                    {/* Avatar — 36px, responsive 30px on small screens */}
+                    {/* Theme toggle */}
+                    <button onClick={toggleDarkMode} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">
+                        {darkMode ? <Sparkles size={18} className="text-primary-light" /> : <Moon size={18} className="text-gray-500" />}
+                    </button>
+
+                    {/* User name + avatar */}
                     <button
                         onClick={() => dispatch({ type: 'SET_PAGE', payload: 'settings' })}
-                        className="ml-2 w-9 h-9 min-w-[36px] min-h-[36px] max-[374px]:w-[30px] max-[374px]:h-[30px] max-[374px]:min-w-[30px] max-[374px]:min-h-[30px] rounded-full gradient-primary flex items-center justify-center text-white text-xs font-bold hover:opacity-90 transition-opacity flex-shrink-0"
+                        className="flex items-center gap-2.5 ml-1 hover:opacity-80 transition-opacity"
                     >
-                        {state.profile?.avatar ? (
-                            <img src={state.profile.avatar} alt="" className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                            state.profile?.name?.charAt(0).toUpperCase() || '?'
-                        )}
+                        <div className="hidden lg:block text-right">
+                            <p className="text-xs font-semibold dark:text-txt-dark leading-tight">{state.profile?.name || 'Student'}</p>
+                            <p className="text-[10px] text-gray-400 leading-tight">{state.profile?.program || 'Set program'}</p>
+                        </div>
+                        <div className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full gradient-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ring-2 ring-primary-light/20">
+                            {state.profile?.avatar ? (
+                                <img src={state.profile.avatar} alt="" className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                                state.profile?.name?.charAt(0).toUpperCase() || '?'
+                            )}
+                        </div>
                     </button>
                 </div>
             </div>
@@ -170,14 +177,14 @@ export default function Header({ onMenuToggle }) {
                             onChange={e => { setSearchQuery(e.target.value); setShowSearch(true); }}
                             onFocus={() => setShowSearch(true)}
                             autoFocus
-                            className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-gray-100 dark:bg-surface2-dark border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light/30 dark:focus:ring-primary-dark/30 dark:text-txt-dark"
+                            className="w-full pl-10 pr-10 py-2.5 rounded-full bg-gray-100 dark:bg-surface2-dark border-0 text-sm focus:outline-none focus:ring-2 focus:ring-primary-light/30 dark:focus:ring-primary-dark/30 dark:text-txt-dark"
                         />
                         <button onClick={() => { setMobileSearchOpen(false); setSearchQuery(''); }} className="absolute right-3 top-1/2 -translate-y-1/2">
                             <X size={16} className="text-gray-400" />
                         </button>
                     </div>
                     {searchResults.length > 0 && (
-                        <div className="mt-2 bg-white dark:bg-surface-dark rounded-xl shadow-lg border border-gray-200 dark:border-border-dark overflow-hidden">
+                        <div className="mt-2 glass-card overflow-hidden">
                             {searchResults.map((r, i) => (
                                 <button
                                     key={i}

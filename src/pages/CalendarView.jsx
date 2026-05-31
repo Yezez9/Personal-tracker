@@ -36,12 +36,12 @@ export default function CalendarView() {
     return (
         <div className="space-y-4 animate-fade-in">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold dark:text-txt-dark">Calendar</h1>
+                <h1 className="text-2xl font-bold dark:text-txt-dark tracking-tight">Calendar</h1>
                 <button onClick={goToday} className="btn-ghost text-xs">Today</button>
             </div>
 
             <div className="flex gap-4 flex-col lg:flex-row">
-                <div className="flex-1 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark overflow-hidden">
+                <div className="flex-1 glass-card overflow-hidden">
                     <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-border-dark">
                         <button onClick={prevMonth} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-white/5"><ChevronLeft size={18} className="dark:text-gray-400" /></button>
                         <h3 className="text-sm font-semibold dark:text-txt-dark">{MONTHS[month]} {year}</h3>
@@ -74,7 +74,7 @@ export default function CalendarView() {
                 </div>
 
                 {selectedDate && (
-                    <div className="w-full lg:w-80 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-border-dark p-5 animate-slide-in self-start">
+                    <div className="w-full lg:w-80 glass-card p-5 animate-slide-in self-start">
                         <h3 className="text-sm font-semibold dark:text-txt-dark mb-3">{selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
                         {selectedClasses.length > 0 && (
                             <div className="mb-4">
@@ -101,3 +101,4 @@ export default function CalendarView() {
         </div>
     );
 }
+

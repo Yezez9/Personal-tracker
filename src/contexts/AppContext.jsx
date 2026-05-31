@@ -11,9 +11,7 @@ const initialState = {
     courses: storage.get('courses') || [],
     todos: storage.get('todos') || [],
     schedule: storage.get('schedule') || [],
-    studySets: storage.get('study_sets') || [],
-    bookmarks: storage.get('bookmarks') || [],
-    countdowns: storage.get('countdowns') || [],
+    recurringTasks: storage.get('recurring_tasks') || [],
     notifications: storage.get('notifications') || [],
     chatHistory: storage.get('va_chat_history') || [],
     onboardingComplete: storage.get('onboarding_complete') || false,
@@ -146,27 +144,44 @@ function appReducer(state, action) {
         case 'DELETE_SCHEDULE':
             return { ...state, schedule: state.schedule.filter(s => s.id !== action.payload) };
 
-        // Study Sets
-        case 'ADD_STUDY_SET':
-            return { ...state, studySets: [...state.studySets, { id: generateId(), createdAt: new Date().toISOString(), ...action.payload }] };
-        case 'UPDATE_STUDY_SET':
-            return { ...state, studySets: state.studySets.map(s => s.id === action.payload.id ? { ...s, ...action.payload } : s) };
-        case 'DELETE_STUDY_SET':
-            return { ...state, studySets: state.studySets.filter(s => s.id !== action.payload) };
-
-        // Bookmarks
-        case 'ADD_BOOKMARK':
-            return { ...state, bookmarks: [...state.bookmarks, { id: generateId(), addedAt: new Date().toISOString(), ...action.payload }] };
-        case 'UPDATE_BOOKMARK':
-            return { ...state, bookmarks: state.bookmarks.map(b => b.id === action.payload.id ? { ...b, ...action.payload } : b) };
-        case 'DELETE_BOOKMARK':
-            return { ...state, bookmarks: state.bookmarks.filter(b => b.id !== action.payload) };
-
-        // Countdowns
-        case 'ADD_COUNTDOWN':
-            return { ...state, countdowns: [...state.countdowns, { id: generateId(), ...action.payload }] };
-        case 'DELETE_COUNTDOWN':
-            return { ...state, countdowns: state.countdowns.filter(c => c.id !== action.payload) };
+        // Recurring Tasks
+        case 'ADD_RECURRING_TASK':
+            return { ...state, recurringTasks: [...state.recurringTasks, { id: generateId(), createdAt: new Date().toISOString(), currentStreak: 0, longestStreak: 0, lastCompletedDate: null, failedDays: 0, consecutiveFailedDays: 0, totalCompletions: 0, isCompletedToday: false, isActive: true, completionLog: [], ...action.payload }] };
+        case 'UPDATE_RECURRING_TASK':
+            return { ...state, recurringTasks: state.recurringTasks.map(t => t.id === action.payload.id ? { ...t, ...action.payload } : t) };
+        case 'DELETE_RECURRING_TASK':
+            return { ...state, recurringTasks: state.recurringTasks.filter(t => t.id !== action.payload) };
+        case 'COMPLETE_RECURRING_TASK': {
+            const todayStr = new Date().toISOString().split('T')[0];
+            return {
+                ...state, recurringTasks: state.recurringTasks.map(t => {
+                    if (t.id !== action.payload) return t;
+                    if (t.isCompletedToday) return t; // Already completed today
+                    const newStreak = (t.currentStreak || 0) + 1;
+                    const newLog = [...(t.completionLog || []), todayStr].slice(-30);
+                    return {
+                        ...t,
+                        isCompletedToday: true,
+                        lastCompletedDate: todayStr,
+                        currentStreak: newStreak,
+                        longestStreak: Math.max(t.longestStreak || 0, newStreak),
+                        consecutiveFailedDays: 0,
+                        totalCompletions: (t.totalCompletions || 0) + 1,
+                        completionLog: newLog,
+                    };
+                })
+            };
+        }
+        case 'RESET_RECURRING_TASKS_DAILY': {
+            const todayStr = new Date().toISOString().split('T')[0];
+            return {
+                ...state, recurringTasks: state.recurringTasks.map(t => {
+                    if (!t.isActive) return t;
+                    if (t.lastCompletedDate === todayStr) return t; // Already completed today
+                    return { ...t, isCompletedToday: false };
+                })
+            };
+        }
 
         // Notifications
         case 'ADD_NOTIFICATION':
@@ -186,7 +201,7 @@ function appReducer(state, action) {
         case 'IMPORT_DATA':
             return { ...state, ...action.payload };
         case 'CLEAR_ALL_DATA':
-            return { ...initialState, profile: null, onboardingComplete: false, courses: [], todos: [], schedule: [], studySets: [], bookmarks: [], countdowns: [], notifications: [], chatHistory: [] };
+            return { ...initialState, profile: null, onboardingComplete: false, courses: [], todos: [], schedule: [], recurringTasks: [], notifications: [], chatHistory: [] };
 
         default:
             return state;
@@ -202,9 +217,7 @@ export function AppProvider({ children }) {
         storage.set('courses', state.courses);
         storage.set('todos', state.todos);
         storage.set('schedule', state.schedule);
-        storage.set('study_sets', state.studySets);
-        storage.set('bookmarks', state.bookmarks);
-        storage.set('countdowns', state.countdowns);
+        storage.set('recurring_tasks', state.recurringTasks);
         storage.set('notifications', state.notifications);
         storage.set('va_chat_history', state.chatHistory);
         storage.set('onboarding_complete', state.onboardingComplete);
