@@ -15,6 +15,7 @@ import CourseFolders from './pages/CourseFolders';
 import ClassSchedule from './pages/ClassSchedule';
 import CalendarView from './pages/CalendarView';
 import RecurringTasks from './pages/RecurringTasks';
+import Shop from './pages/Shop';
 import Settings from './pages/Settings';
 
 function AppContent() {
@@ -58,6 +59,55 @@ function AppContent() {
             profile: state.profile,
             recurringTasks: state.recurringTasks || [],
         });
+
+        // ─── Streak Freeze Auto-Activation ──────────────────────
+        const lastOpened = localStorage.getItem('tasktrack_last_opened');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayIso = today.toISOString().split('T')[0];
+
+        if (lastOpened && lastOpened !== todayIso) {
+            const lastDate = new Date(lastOpened);
+            lastDate.setHours(0, 0, 0, 0);
+            const missedDays = Math.floor((today - lastDate) / (1000 * 60 * 60 * 24)) - 1;
+
+            if (missedDays > 0) {
+                const freezes = (state.shopPurchases || []).filter(p => p.itemId === 'streak_freeze' && !p.consumed);
+                const freezesToUse = Math.min(missedDays, freezes.length);
+                const uncoveredDays = missedDays - freezesToUse;
+
+                // Consume freezes
+                for (let i = 0; i < freezesToUse; i++) {
+                    dispatch({ type: 'CONSUME_SHOP_ITEM', payload: 'streak_freeze' });
+                }
+
+                if (freezesToUse > 0) {
+                    const remaining = freezes.length - freezesToUse;
+                    dispatch({
+                        type: 'ADD_NOTIFICATION',
+                        payload: {
+                            icon: '❄️',
+                            message: `Your Streak Freeze saved your streak! ❄️ You have ${remaining} freeze(s) left.`
+                        }
+                    });
+                }
+
+                if (uncoveredDays > 0) {
+                    // Reset streak — user missed days with no freeze coverage
+                    const streakData = JSON.parse(localStorage.getItem('study_streak') || '{"currentStreak":0}');
+                    streakData.currentStreak = 0;
+                    localStorage.setItem('study_streak', JSON.stringify(streakData));
+                    dispatch({
+                        type: 'ADD_NOTIFICATION',
+                        payload: {
+                            icon: '💔',
+                            message: `Your streak was reset 💔 Buy a Streak Freeze in the Shop to protect future streaks!`
+                        }
+                    });
+                }
+            }
+        }
+        localStorage.setItem('tasktrack_last_opened', todayIso);
     }, []);
 
     const pages = {
@@ -67,6 +117,7 @@ function AppContent() {
         schedule: ClassSchedule,
         calendar: CalendarView,
         recurring: RecurringTasks,
+        shop: Shop,
         settings: Settings,
         ai: () => { dispatch({ type: 'SET_PAGE', payload: 'dashboard' }); return null; },
     };

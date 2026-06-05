@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../contexts/AppContext';
-import { Home, CheckSquare, FolderOpen, CalendarDays, Repeat, Settings } from 'lucide-react';
+import { Home, CheckSquare, FolderOpen, CalendarDays, Repeat, ShoppingBag } from 'lucide-react';
 
 const tabs = [
     { id: 'dashboard', icon: Home, label: 'Home' },
@@ -8,7 +8,7 @@ const tabs = [
     { id: 'courses', icon: FolderOpen, label: 'Courses' },
     { id: 'schedule', icon: CalendarDays, label: 'Schedule' },
     { id: 'recurring', icon: Repeat, label: 'Habits' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
+    { id: 'shop', icon: ShoppingBag, label: 'Shop' },
 ];
 
 export default function MobileNav() {

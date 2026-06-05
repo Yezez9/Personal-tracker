@@ -5,7 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 import { getCoinWallet, getLevel } from '../../utils/coinService';
 import {
     Home, CheckSquare, FolderOpen, CalendarDays, Calendar,
-    Repeat, Bot, Settings, Moon, Sun, Sparkles
+    Repeat, ShoppingBag, Bot, Settings, Moon, Sun, Sparkles
 } from 'lucide-react';
 
 const navItems = [
@@ -15,6 +15,7 @@ const navItems = [
     { id: 'schedule', label: 'Class Schedule', icon: CalendarDays },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'recurring', label: 'Recurring Tasks', icon: Repeat },
+    { id: 'shop', label: 'Coin Shop', icon: ShoppingBag },
     { id: 'ai', label: 'AI Assistant', icon: Bot },
 ];
 

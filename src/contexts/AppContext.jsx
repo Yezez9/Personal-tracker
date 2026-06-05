@@ -17,6 +17,7 @@ const initialState = {
     todos: storage.get('todos') || [],
     schedule: storage.get('schedule') || [],
     recurringTasks: storage.get('recurring_tasks') || [],
+    shopPurchases: storage.get('shop_purchases') || [],
     notifications: storage.get('notifications') || [],
     chatHistory: storage.get('va_chat_history') || [],
     onboardingComplete: storage.get('onboarding_complete') || false,
@@ -202,6 +203,24 @@ function appReducer(state, action) {
         case 'CLEAR_NOTIFICATIONS':
             return { ...state, notifications: [] };
 
+        // Shop Purchases
+        case 'ADD_SHOP_PURCHASE':
+            return { ...state, shopPurchases: [...state.shopPurchases, { id: generateId(), ...action.payload }] };
+        case 'CONSUME_SHOP_ITEM': {
+            // Consume the oldest unconsumed item of the given itemId
+            let consumed = false;
+            return {
+                ...state,
+                shopPurchases: state.shopPurchases.map(p => {
+                    if (!consumed && p.itemId === action.payload && !p.consumed) {
+                        consumed = true;
+                        return { ...p, consumed: true, consumedAt: new Date().toISOString() };
+                    }
+                    return p;
+                })
+            };
+        }
+
         // Chat
         case 'ADD_CHAT_MESSAGE':
             return { ...state, chatHistory: [...state.chatHistory, action.payload] };
@@ -273,6 +292,7 @@ export function AppProvider({ children }) {
         storage.set('todos', state.todos);
         storage.set('schedule', state.schedule);
         storage.set('recurring_tasks', state.recurringTasks);
+        storage.set('shop_purchases', state.shopPurchases);
         storage.set('notifications', state.notifications);
         storage.set('va_chat_history', state.chatHistory);
         storage.set('onboarding_complete', state.onboardingComplete);

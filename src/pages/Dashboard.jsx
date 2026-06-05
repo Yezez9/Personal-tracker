@@ -200,6 +200,16 @@ export default function Dashboard() {
                         <div>
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">Day Streak</p>
                             <p className="text-2xl font-bold dark:text-txt-dark leading-none mt-0.5">{streak} Days</p>
+                            {(() => {
+                                const freezeCount = (state.shopPurchases || []).filter(p => p.itemId === 'streak_freeze' && !p.consumed).length;
+                                return freezeCount > 0 ? (
+                                    <div className="flex items-center gap-0.5 mt-1">
+                                        {Array.from({ length: freezeCount }).map((_, i) => (
+                                            <span key={i} className="text-xs" title="Streak Freeze">🧊</span>
+                                        ))}
+                                    </div>
+                                ) : null;
+                            })()}
                         </div>
                     </div>
                 </div>
