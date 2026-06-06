@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
 import storage from '../utils/storage';
 import { generateId } from '../utils/helpers';
-import { generatePriorityScore } from '../utils/aiService';
 import { scoreTaskCoins, calculateCompletionCoins, addCoins } from '../utils/coinService';
+import { fireImmediateNotification } from '../utils/NotificationScheduler';
 import {
     isSupabaseConfigured, getUserId, loadAllFromSupabase,
     upsertUserProfile, syncTask, syncRecurringTask, syncCourse, syncScheduleItem,
+    syncCountdown, syncBookmark, syncShopPurchase
 } from '../utils/supabaseService';
 
 const AppContext = createContext();
@@ -22,7 +23,7 @@ const initialState = {
     chatHistory: storage.get('va_chat_history') || [],
     onboardingComplete: storage.get('onboarding_complete') || false,
     currentPage: 'dashboard',
-    _loading: false,       // Set to true only when actively fetching from Supabase
+    _loading: isSupabaseConfigured(), // Set to true initially if Supabase is configured
     _cloudReady: false,    // Whether Supabase data has been loaded
 };
 
@@ -75,14 +76,8 @@ function appReducer(state, action) {
                 startedAt: null,
                 completedAt: null,
                 ...action.payload,
+                _isScoring: true,
             };
-            const { score, reason } = generatePriorityScore(newTodo, state.todos);
-            newTodo.aiPriorityScore = score;
-            newTodo.aiPriorityReason = reason;
-            scoreTaskCoins(newTodo, state.courses, state.todos).then(coinData => {
-                newTodo.coinReward = coinData;
-                storage.set('todos', [...state.todos, newTodo]);
-            });
             return { ...state, todos: [...state.todos, newTodo] };
         }
         case 'UPDATE_TODO':
@@ -90,11 +85,21 @@ function appReducer(state, action) {
                 ...state, todos: state.todos.map(t => {
                     if (t.id === action.payload.id) {
                         const updates = action.payload.updates || action.payload;
-                        const updated = { ...t, ...updates, id: t.id };
-                        const { score, reason } = generatePriorityScore(updated, state.todos);
-                        updated.aiPriorityScore = score;
-                        updated.aiPriorityReason = reason;
-                        return updated;
+                        return { ...t, ...updates, id: t.id, _isScoring: true };
+                    }
+                    return t;
+                })
+            };
+        case 'SCORE_TODO_RESULT':
+            return {
+                ...state, todos: state.todos.map(t => {
+                    if (t.id === action.payload.id) {
+                        return { 
+                            ...t, 
+                            ...action.payload.updates, 
+                            _isScoring: false,
+                            coinReward: action.payload.updates
+                        };
                     }
                     return t;
                 })
@@ -247,11 +252,17 @@ export function AppProvider({ children }) {
     const dispatch = useCallback((action) => {
         rawDispatch(action);
 
-        // Fire-and-forget sync to Supabase (don't block UI)
+        // Fire-and-forget sync to Supabase with 3-second retry
         if (cloudEnabled) {
-            syncToSupabase(action, userId).catch(err =>
-                console.warn('[Supabase] Sync error:', err)
-            );
+            syncToSupabase(action, userId).catch(err => {
+                console.warn('[Supabase] Initial sync failed, retrying in 3s...', err);
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Sync failed — will retry', type: 'warning' } }));
+                setTimeout(() => {
+                    syncToSupabase(action, userId).catch(retryErr => {
+                        console.error('[Supabase] Retry sync failed:', retryErr);
+                    });
+                }, 3000);
+            });
         }
     }, [cloudEnabled, userId]);
 
@@ -272,10 +283,12 @@ export function AppProvider({ children }) {
                 if (cloudData) {
                     rawDispatch({ type: 'HYDRATE_FROM_CLOUD', payload: cloudData });
                 } else {
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Connection error — showing cached data', type: 'error' } }));
                     rawDispatch({ type: 'SET_LOADING', payload: false });
                 }
             } catch (err) {
                 console.error('[Supabase] Load failed, using local data:', err);
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: 'Connection error — showing cached data', type: 'error' } }));
                 rawDispatch({ type: 'SET_LOADING', payload: false });
             } finally {
                 clearTimeout(timeout);
@@ -306,16 +319,48 @@ export function AppProvider({ children }) {
                 const result = await calculateCompletionCoins(task, state.courses);
                 addCoins(result.coins, task.title, result.reasoning);
                 window.dispatchEvent(new CustomEvent('coinEarned', { detail: result }));
+                fireImmediateNotification('Task Completed! 🎉', `You earned +${result.coins} 🪙 for completing "${task.title}". Keep it up!`);
                 dispatch({ type: 'AWARD_COINS', payload: { taskId: task.id, coinResult: result } });
             } catch (err) {
                 console.warn('[CoinAward] Error:', err);
                 const fallback = task.coinReward?.baseCoins || 25;
                 addCoins(fallback, task.title, 'Completed!');
                 window.dispatchEvent(new CustomEvent('coinEarned', { detail: { coins: fallback, baseCoins: fallback, earlyBonus: 0, latePenalty: 0, recurringDeduct: 0, streakMultiplier: 1, reasoning: 'Completed!' } }));
+                fireImmediateNotification('Task Completed! 🎉', `You earned +${fallback} 🪙 for completing "${task.title}". Keep it up!`);
                 dispatch({ type: 'AWARD_COINS', payload: { taskId: task.id } });
             }
         });
     }, [state.todos]);
+
+    // ─── Async AI scoring processing ────────────────────────────
+    useEffect(() => {
+        const scoringTasks = state.todos.filter(t => t._isScoring);
+        scoringTasks.forEach(async (task) => {
+            try {
+                const coinData = await scoreTaskCoins(task, state.courses, state.todos);
+                dispatch({ 
+                    type: 'SCORE_TODO_RESULT', 
+                    payload: { 
+                        id: task.id, 
+                        updates: {
+                            ...coinData,
+                            aiPriorityScore: coinData.aiPriorityScore || 50,
+                            aiPriorityReason: coinData.priorityReason || ''
+                        } 
+                    } 
+                });
+            } catch (err) {
+                console.warn('[AIScoring] Error:', err);
+                dispatch({ 
+                    type: 'SCORE_TODO_RESULT', 
+                    payload: { 
+                        id: task.id, 
+                        updates: { baseCoins: 25, taskType: 'other', detectedDifficulty: 'medium' } 
+                    } 
+                });
+            }
+        });
+    }, [state.todos, state.courses]);
 
     return (
         <AppContext.Provider value={{ state, dispatch }}>
@@ -377,6 +422,30 @@ async function syncToSupabase(action, userId) {
             break;
         case 'DELETE_SCHEDULE':
             await syncScheduleItem('delete', { id: action.payload }, userId);
+            break;
+        case 'ADD_COUNTDOWN':
+            await syncCountdown('add', action.payload, userId);
+            break;
+        case 'UPDATE_COUNTDOWN':
+            await syncCountdown('update', action.payload, userId);
+            break;
+        case 'DELETE_COUNTDOWN':
+            await syncCountdown('delete', { id: action.payload }, userId);
+            break;
+        case 'ADD_BOOKMARK':
+            await syncBookmark('add', action.payload, userId);
+            break;
+        case 'UPDATE_BOOKMARK':
+            await syncBookmark('update', action.payload, userId);
+            break;
+        case 'DELETE_BOOKMARK':
+            await syncBookmark('delete', { id: action.payload }, userId);
+            break;
+        case 'ADD_SHOP_PURCHASE':
+            await syncShopPurchase('add', action.payload, userId);
+            break;
+        case 'CONSUME_STREAK_FREEZE':
+            await syncShopPurchase('delete', { id: action.payload }, userId);
             break;
     }
 }

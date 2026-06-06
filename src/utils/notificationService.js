@@ -44,6 +44,39 @@ export async function requestNotificationPermission() {
     return await Notification.requestPermission();
 }
 
+// Web Push Subscription
+export async function subscribeToWebPush(userId) {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    
+    // We only want to do this on the web platform, not inside Capacitor Native
+    if (Capacitor.isNativePlatform()) return;
+
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: 'BJ3W9Qzxqbii_Ay8WP72I_wBya6z-TIfFEZPr7hFNGYhxLUDP3qiEIEZE83fftdm04nUdqTG4eVreY2S3pf2UZw'
+        });
+
+        // Send subscription to backend
+        // Using relative URL if served from same origin, or hardcode if backend is on Render
+        // For development/demo, assuming backend is running on localhost:3000 or the provided render URL
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'https://tasktrack-backend.onrender.com';
+        
+        await fetch(`${backendUrl}/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, subscription })
+        });
+        console.log('[WebPush] Subscribed successfully');
+    } catch (err) {
+        console.error('[WebPush] Subscription failed:', err);
+    }
+}
+
 // Show a browser notification immediately
 function showNotification(title, body, tag) {
     // On native, immediate notifications are just scheduled for 'now' (handled in scheduleAt)

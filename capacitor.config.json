@@ -17,6 +17,11 @@
         "StatusBar": {
             "style": "DARK",
             "backgroundColor": "#0F0F1A"
+        },
+        "LocalNotifications": {
+            "smallIcon": "ic_stat_tasktrack",
+            "iconColor": "#6C63FF",
+            "sound": "notification.wav"
         }
     }
 }

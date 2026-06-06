@@ -41,21 +41,31 @@ export default function Settings() {
         window.deferredPrompt = null;
     };
     const fileRef = useRef(null);
-    const [notifSettings, setNotifSettings] = useState(getNotificationSettings());
-    const [soundOn, setSoundOn] = useState(isSoundEnabled());
+    const notifSettings = profile?.notificationPreferences || {
+        master: true, morning: true, deadline: true, recurring: true, streak: true
+    };
 
     const toggleNotifSetting = async (key) => {
-        // Request permission if enabling
-        if (!notifSettings[key]) {
-            const perm = await requestNotificationPermission();
-            if (perm !== 'granted') {
-                alert('Please allow notifications in your browser settings to enable this feature.');
-                return;
+        // Request permission if enabling master
+        if (key === 'master' && !notifSettings.master && window.Capacitor) {
+            try {
+                const { LocalNotifications } = await import('@capacitor/local-notifications');
+                const perm = await LocalNotifications.requestPermissions();
+                if (perm.display !== 'granted') {
+                    alert('Please allow notifications in your device settings.');
+                    return;
+                }
+            } catch (e) {
+                console.warn('Capacitor notifications not available', e);
             }
         }
-        const updated = { ...notifSettings, [key]: !notifSettings[key] };
-        setNotifSettings(updated);
-        setNotificationSettings(updated);
+        
+        const updatedPrefs = { ...notifSettings, [key]: !notifSettings[key] };
+        
+        // Update form and dispatch to AppContext which triggers Supabase sync
+        const updatedProfile = { ...profile, notificationPreferences: updatedPrefs };
+        setForm(updatedProfile);
+        dispatch({ type: 'SET_PROFILE', payload: updatedProfile });
     };
 
     const saveProfile = () => {
@@ -182,40 +192,68 @@ export default function Settings() {
             {/* Notifications */}
             <div className="glass-card p-6">
                 <h2 className="text-sm font-semibold dark:text-txt-dark mb-4 flex items-center gap-2">
-                    <Bell size={16} className="text-secondary-light dark:text-secondary-dark" /> Notifications
+                    <Bell size={16} className="text-secondary-light dark:text-secondary-dark" /> Push Notifications
                 </h2>
                 <div className="space-y-4">
-                    {/* Daily Notifications Toggle */}
-                    <div className="flex items-center justify-between">
+                    {/* Master Toggle */}
+                    <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-border-dark">
                         <div>
-                            <p className="text-sm font-medium dark:text-txt-dark">Daily Notifications</p>
-                            <p className="text-[10px] text-gray-400">AI-generated reminders morning, afternoon & evening</p>
+                            <p className="text-sm font-medium dark:text-txt-dark">Enable Notifications</p>
+                            <p className="text-[10px] text-gray-400">Master switch for all push notifications</p>
                         </div>
                         <button
-                            onClick={() => toggleNotifSetting('dailyNotifications')}
-                            className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifSettings.dailyNotifications ? 'bg-primary-light dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}`}
+                            onClick={() => toggleNotifSetting('master')}
+                            className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifSettings.master ? 'bg-primary-light dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}`}
                         >
-                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifSettings.dailyNotifications ? 'translate-x-5' : ''}`} />
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifSettings.master ? 'translate-x-5' : ''}`} />
                         </button>
                     </div>
-                    {/* Streak Reminder Toggle */}
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium dark:text-txt-dark">Streak Reminders</p>
-                            <p className="text-[10px] text-gray-400">🔥 Nightly reminder at 8 PM to keep your streak alive</p>
+                    
+                    <div className={`space-y-4 transition-opacity ${notifSettings.master ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                        {/* Morning Briefing Toggle */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium dark:text-txt-dark">Morning Briefing</p>
+                                <p className="text-[10px] text-gray-400">AI-generated daily overview at 8:00 AM</p>
+                            </div>
+                            <button onClick={() => toggleNotifSetting('morning')} className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifSettings.morning ? 'bg-primary-light dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifSettings.morning ? 'translate-x-5' : ''}`} />
+                            </button>
                         </div>
-                        <button
-                            onClick={() => toggleNotifSetting('streakReminder')}
-                            className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifSettings.streakReminder ? 'bg-primary-light dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}`}
-                        >
-                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifSettings.streakReminder ? 'translate-x-5' : ''}`} />
-                        </button>
+                        
+                        {/* Deadline Warnings Toggle */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium dark:text-txt-dark">Deadline Warnings</p>
+                                <p className="text-[10px] text-gray-400">Alerts for tasks due within 3 days</p>
+                            </div>
+                            <button onClick={() => toggleNotifSetting('deadline')} className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifSettings.deadline ? 'bg-primary-light dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifSettings.deadline ? 'translate-x-5' : ''}`} />
+                            </button>
+                        </div>
+
+                        {/* Recurring Task Reminders Toggle */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium dark:text-txt-dark">Recurring Task Reminders</p>
+                                <p className="text-[10px] text-gray-400">Reminders for incomplete recurring tasks at 7:00 PM</p>
+                            </div>
+                            <button onClick={() => toggleNotifSetting('recurring')} className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifSettings.recurring ? 'bg-primary-light dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifSettings.recurring ? 'translate-x-5' : ''}`} />
+                            </button>
+                        </div>
+
+                        {/* Streak Reminder Toggle */}
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium dark:text-txt-dark">Streak Reminders</p>
+                                <p className="text-[10px] text-gray-400">🔥 Nightly reminder at 8 PM to keep your streak alive</p>
+                            </div>
+                            <button onClick={() => toggleNotifSetting('streak')} className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${notifSettings.streak ? 'bg-primary-light dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${notifSettings.streak ? 'translate-x-5' : ''}`} />
+                            </button>
+                        </div>
                     </div>
-                    {typeof Notification !== 'undefined' && Notification.permission !== 'granted' && (
-                        <p className="text-[10px] text-amber-500 flex items-center gap-1">
-                            <BellOff size={12} /> Browser notifications are currently blocked. Enable them in your browser settings.
-                        </p>
-                    )}
                     {/* Sound Toggle */}
                     <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-border-dark">
                         <div className="flex items-center gap-2">

@@ -77,6 +77,10 @@ create table tasks (
   started_at timestamp,
   base_coins integer,
   total_coins integer,
+  task_type text,
+  detected_difficulty text,
+  ai_tip text,
+  difficulty_reason text,
   created_at timestamp default now()
 );
 

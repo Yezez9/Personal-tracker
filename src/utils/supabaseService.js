@@ -88,6 +88,9 @@ export async function upsertUserProfile(userId, profile) {
         coins: profile.coins || 0,
         streak: profile.streak || 0,
         last_opened: new Date().toISOString().split('T')[0],
+        notification_preferences: profile.notificationPreferences || {
+            master: true, morning: true, deadline: true, recurring: true, streak: true
+        }
     };
     if (existing) {
         return await updateRow('users', userId, data);
@@ -120,8 +123,12 @@ export async function syncTask(action, task, userId) {
         coins_awarded: task.coinsAwarded || false,
         completed_at: task.completedAt || null,
         started_at: task.startedAt || null,
-        base_coins: task.coinReward?.baseCoins || 0,
+        base_coins: task.coinReward?.baseCoins || task.baseCoins || 0,
         total_coins: task.coinReward?.totalCoins || 0,
+        task_type: task.taskType || 'other',
+        detected_difficulty: task.detectedDifficulty || 'medium',
+        ai_tip: task.aiTip || '',
+        difficulty_reason: task.difficultyReason || '',
     };
 
     switch (action) {
@@ -209,17 +216,83 @@ export async function syncScheduleItem(action, item, userId) {
     }
 }
 
+// ─── Countdowns ──────────────────────────────────────────────────────
+export async function fetchCountdowns(userId) {
+    return await fetchAll('countdowns', userId) || [];
+}
+
+export async function syncCountdown(action, item, userId) {
+    const row = {
+        user_id: userId,
+        id: item.id,
+        title: item.title,
+        target_date: item.date,
+        icon: item.icon || '🎯',
+        color: item.color || '#6C63FF',
+    };
+
+    switch (action) {
+        case 'add': return await insertRow('countdowns', row);
+        case 'update': return await updateRow('countdowns', item.id, row);
+        case 'delete': return await deleteRow('countdowns', item.id);
+    }
+}
+
+// ─── Bookmarks ───────────────────────────────────────────────────────
+export async function fetchBookmarks(userId) {
+    return await fetchAll('bookmarks', userId) || [];
+}
+
+export async function syncBookmark(action, item, userId) {
+    const row = {
+        user_id: userId,
+        id: item.id,
+        url: item.url,
+        title: item.title,
+        description: item.description || '',
+        course_id: item.courseId || null,
+    };
+
+    switch (action) {
+        case 'add': return await insertRow('bookmarks', row);
+        case 'update': return await updateRow('bookmarks', item.id, row);
+        case 'delete': return await deleteRow('bookmarks', item.id);
+    }
+}
+
+// ─── Shop Purchases ──────────────────────────────────────────────────
+export async function fetchShopPurchases(userId) {
+    return await fetchAll('shop_purchases', userId) || [];
+}
+
+export async function syncShopPurchase(action, item, userId) {
+    // For shop purchases, item is just { id, itemId } or we might delete by id
+    const row = {
+        user_id: userId,
+        id: item.id,
+        item_id: item.itemId,
+    };
+
+    switch (action) {
+        case 'add': return await insertRow('shop_purchases', row);
+        case 'delete': return await deleteRow('shop_purchases', item.id);
+    }
+}
+
 // ─── Load All Data ──────────────────────────────────────────────────
 export async function loadAllFromSupabase(userId) {
     if (!isSupabaseConfigured()) return null;
 
     try {
-        const [profile, tasks, recurringTasks, courses, schedule] = await Promise.all([
+        const [profile, tasks, recurringTasks, courses, schedule, countdowns, bookmarks, shopPurchases] = await Promise.all([
             fetchUserProfile(userId),
             fetchTasks(userId),
             fetchRecurringTasks(userId),
             fetchCourses(userId),
             fetchSchedule(userId),
+            fetchCountdowns(userId),
+            fetchBookmarks(userId),
+            fetchShopPurchases(userId),
         ]);
 
         // Transform Supabase snake_case → app camelCase
@@ -230,6 +303,10 @@ export async function loadAllFromSupabase(userId) {
             aiPriorityScore: t.ai_priority_score, coinsAwarded: t.coins_awarded,
             completedAt: t.completed_at, startedAt: t.started_at,
             coinReward: { baseCoins: t.base_coins, totalCoins: t.total_coins },
+            taskType: t.task_type || 'other',
+            detectedDifficulty: t.detected_difficulty || 'medium',
+            aiTip: t.ai_tip || '',
+            difficultyReason: t.difficulty_reason || '',
             createdAt: t.created_at, subtodos: [], tags: [],
             aiPriorityReason: '', _pendingCoinAward: false,
         }));
@@ -256,9 +333,27 @@ export async function loadAllFromSupabase(userId) {
             room: s.room, color: s.color,
         }));
 
+        const transformedCountdowns = (countdowns || []).map(c => ({
+            id: c.id, title: c.title, date: c.target_date,
+            icon: c.icon, color: c.color,
+        }));
+
+        const transformedBookmarks = (bookmarks || []).map(b => ({
+            id: b.id, url: b.url, title: b.title,
+            description: b.description, courseId: b.course_id,
+        }));
+
+        const transformedShopPurchases = (shopPurchases || []).map(s => ({
+            id: s.id, itemId: s.item_id, purchasedAt: s.purchased_at,
+        }));
+
         const transformedProfile = profile ? {
             name: profile.name, major: profile.program, program: profile.program,
             school: profile.school, avatar: profile.avatar,
+            coins: profile.coins, streak: profile.streak, lastOpened: profile.last_opened,
+            notificationPreferences: profile.notification_preferences || {
+                master: true, morning: true, deadline: true, recurring: true, streak: true
+            }
         } : null;
 
         return {
@@ -267,6 +362,9 @@ export async function loadAllFromSupabase(userId) {
             recurringTasks: transformedRecurring,
             courses: transformedCourses,
             schedule: transformedSchedule,
+            countdowns: transformedCountdowns,
+            bookmarks: transformedBookmarks,
+            shopPurchases: transformedShopPurchases,
         };
     } catch (err) {
         console.error('[Supabase] Failed to load all data:', err);

@@ -102,24 +102,40 @@ export async function scoreTaskCoins(task, courses, allTodos) {
     const courseName = courses?.find(c => c.id === task.course)?.name || 'General';
 
     if (GROQ_API_KEY) {
-        const systemPrompt = `You are a gamification engine for a student productivity app. Analyze this task and return a JSON object with the coin reward. Consider these factors:
+        const existingTasksStr = (allTodos || [])
+            .filter(t => t.course === task.course && t.id !== task.id && t.status !== 'completed')
+            .map(t => t.title).join(', ') || 'None';
 
-- Task type: exam prep and projects are worth more than simple assignments or readings
-- Subject difficulty: STEM subjects (math, science, programming, engineering) score higher than others
-- Description quality: detailed descriptions with clear goals score higher
-- Priority level: high priority = more coins
-- Recurrence penalty: reduce by 10-20% if this type of task appears frequently
+        const systemPrompt = `You are an intelligent academic task evaluator for a student productivity app. A student just created or updated a task. Analyze it deeply and return a fair, thoughtful coin reward. Consider ALL of these factors in your reasoning:
 
-Task data:
-- Title: ${task.title}
-- Description: ${task.description || 'none'}
-- Course: ${courseName}
-- Priority: ${task.priority || 'medium'}
-- Tags: ${(task.tags || []).join(', ') || 'none'}
-- Due date: ${task.dueDate || 'none'}
+TASK DATA PROVIDED:
+Title: ${task.title}
+Description: ${task.description || 'none'}
+Course/Subject: ${courseName}
+Priority level set by student: ${task.priority || 'medium'}
+Due date: ${task.dueDate || 'none'}
+Subtasks count: ${(task.subtodos || []).length}
+Student's existing tasks in same course: ${existingTasksStr}
 
-Return ONLY this JSON — no other text:
-{"baseCoins":number,"taskType":"exam|project|assignment|lab|reading|quiz|other","difficultyScore":number,"reasoning":"short explanation"}`;
+RULES FOR YOUR JUDGMENT:
+- Exams and major projects are inherently harder regardless of what priority the student set
+- A detailed description signals the student understands the complexity — reward more
+- Vague one-word descriptions signal either an easy task or poor planning — reward less
+- STEM subjects (mathematics, programming, physics, engineering, data science, chemistry) have higher base difficulty than non-STEM
+- If the student is already overloaded in a course (3+ pending tasks), this new task adds more cognitive load — bump coins slightly
+- Due date proximity matters — a task due tomorrow that was just created means urgency — factor that in
+- Never give the same coin amount twice in a row for similar tasks — vary it naturally
+
+Return ONLY this JSON — no preamble, no explanation outside the JSON:
+{
+"taskType": "exam | major_project | minor_assignment | lab_report | reading | quiz | presentation | other",
+"detectedDifficulty": "trivial | easy | medium | hard | extreme",
+"difficultyReason": "one natural sentence explaining your judgment",
+"baseCoins": number (trivial: 5-15, easy: 16-30, medium: 31-55, hard: 56-85, extreme: 86-150),
+"aiPriorityScore": number (0-100),
+"priorityReason": "one sentence on why this priority score",
+"tip": "one short actionable tip for completing this task effectively"
+}`;
 
         try {
             const res = await fetch(GROQ_ENDPOINT, {
@@ -136,7 +152,17 @@ Return ONLY this JSON — no other text:
                 const text = data.choices?.[0]?.message?.content || '';
                 const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
                 const parsed = JSON.parse(cleaned);
-                if (parsed.baseCoins) return parsed;
+                if (parsed.baseCoins) {
+                    return {
+                        baseCoins: parsed.baseCoins,
+                        taskType: parsed.taskType || 'other',
+                        detectedDifficulty: parsed.detectedDifficulty || 'medium',
+                        difficultyReason: parsed.difficultyReason || 'Scored via AI.',
+                        aiPriorityScore: parsed.aiPriorityScore || 50,
+                        priorityReason: parsed.priorityReason || 'AI assigned priority.',
+                        aiTip: parsed.tip || '',
+                    };
+                }
             }
         } catch (err) {
             console.warn('[CoinService] AI scoring failed:', err.message);
@@ -159,15 +185,23 @@ Return ONLY this JSON — no other text:
     if (task.priority === 'low') baseCoins -= 5;
     baseCoins = Math.max(10, Math.min(100, baseCoins));
 
-    return { baseCoins, taskType, difficultyScore: Math.round(baseCoins / 10), reasoning: 'Scored locally based on task type and priority.' };
+    return { 
+        baseCoins, 
+        taskType, 
+        detectedDifficulty: 'medium', 
+        difficultyReason: 'Scored locally based on task type and priority.',
+        aiPriorityScore: 50,
+        priorityReason: 'Local fallback priority.',
+        aiTip: 'Break this down into smaller steps if needed.',
+    };
 }
 
 // ─── Calculate Final Coins on Completion (AI-Powered) ───────────────
 export async function calculateCompletionCoins(task, courses) {
-    const baseCoins = task.coinReward?.baseCoins || 25;
+    const baseCoins = task.coinReward?.baseCoins || task.baseCoins || 25;
     const courseName = courses?.find(c => c.id === task.course)?.name || 'General';
-    const taskType = task.coinReward?.taskType || 'other';
-    const difficultyScore = task.coinReward?.difficultyScore || 5;
+    const taskType = task.coinReward?.taskType || task.taskType || 'other';
+    const detectedDifficulty = task.coinReward?.detectedDifficulty || task.detectedDifficulty || 'medium';
     const streakData = storage.get('study_streak') || { currentStreak: 1 };
     const streak = streakData.currentStreak || 1;
     const { multiplier: streakMultiplier } = getStreakMultiplier();
@@ -208,14 +242,14 @@ export async function calculateCompletionCoins(task, courses) {
 Task base coins: ${baseCoins}
 Task type: ${taskType}
 Priority level: ${task.priority || 'medium'}
-Difficulty score: ${difficultyScore}/10
+AI Detected Difficulty: ${detectedDifficulty}
 Days completed BEFORE due date: ${daysEarly}
 Current study streak: ${streak} days
 Was this task recurring in the same subject: ${recurring ? 'yes' : 'no'}
 
 Rules:
-- Completing 7+ days early on a high priority exam should give a large bonus — potentially doubling base coins
-- Completing 1 day early on a low priority reading gives a small bonus — maybe 10-15% extra
+- Completing 7+ days early on a high priority/extreme task should give a massive bonus — potentially doubling base coins
+- Completing 1 day early on a low priority/trivial task gives a small bonus — maybe 10-15% extra
 - Completing exactly on the due date gives no bonus — base coins only
 - The earlier AND harder the task, the exponentially more bonus — not linear
 - Think carefully and justify your number

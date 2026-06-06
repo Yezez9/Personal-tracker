@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { initializeNotifications } from './utils/notificationService';
+import { initializeNotifications, subscribeToWebPush } from './utils/notificationService';
+import { scheduleAllNotifications } from './utils/NotificationScheduler';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AppProvider, useApp } from './contexts/AppContext';
 import Sidebar from './components/layout/Sidebar';
@@ -22,6 +23,17 @@ function AppContent() {
     const { state, dispatch } = useApp();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [globalToast, setGlobalToast] = useState(null);
+
+    // Global toast listener
+    useEffect(() => {
+        const handleToast = (e) => {
+            setGlobalToast({ ...e.detail, id: Date.now() });
+            setTimeout(() => setGlobalToast(null), 3000);
+        };
+        window.addEventListener('toast', handleToast);
+        return () => window.removeEventListener('toast', handleToast);
+    }, []);
 
     // Generate daily notifications on mount
     useEffect(() => {
@@ -51,7 +63,7 @@ function AppContent() {
             performMidnightReset(state.recurringTasks, dispatch, state.profile?.name);
         });
 
-        // Initialize AI push notifications
+        // Initialize AI push notifications (local web)
         initializeNotifications({
             todos: state.todos,
             schedule: state.schedule,
@@ -110,6 +122,14 @@ function AppContent() {
         localStorage.setItem('tasktrack_last_opened', todayIso);
     }, []);
 
+    // Trigger Capacitor & Web Push notifications when cloud data is fully loaded
+    useEffect(() => {
+        if (state._cloudReady && state.profile?.notificationPreferences?.master !== false) {
+            scheduleAllNotifications(state);
+            subscribeToWebPush(state.tasktrack_user_id);
+        }
+    }, [state._cloudReady, state.profile?.notificationPreferences?.master]);
+
     const pages = {
         dashboard: Dashboard,
         todos: TodoList,
@@ -127,12 +147,14 @@ function AppContent() {
     // Show loading spinner while cloud data loads
     if (state._loading) {
         return (
-            <div className="min-h-screen bg-bg-light dark:bg-bg-dark flex items-center justify-center">
-                <div className="text-center space-y-4 animate-fade-in">
-                    <div className="w-12 h-12 border-3 border-primary-light/20 border-t-primary-light rounded-full animate-spin mx-auto" />
-                    <p className="text-sm text-gray-400 font-medium">Loading TaskTrack...</p>
-                    <p className="text-[10px] text-gray-500">Syncing with cloud ☁️</p>
+            <div className="min-h-screen bg-bg-light dark:bg-bg-dark flex flex-col items-center justify-center p-4">
+                <div className="relative w-24 h-24 flex items-center justify-center mb-6">
+                    <div className="absolute inset-0 border-4 border-gray-200 dark:border-gray-800 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-primary-light border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-3xl filter drop-shadow-md">🎯</span>
                 </div>
+                <h1 className="text-xl font-bold tracking-tight text-gray-800 dark:text-gray-100 mb-2">TaskTrack</h1>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Loading your workspace...</p>
             </div>
         );
     }
@@ -166,6 +188,21 @@ function AppContent() {
             <AIAssistant />
             <InstallPrompt />
             <CoinAnimation />
+            
+            {/* Global Toasts */}
+            {globalToast && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[300] animate-fade-in">
+                    <div className={`px-4 py-2 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 ${
+                        globalToast.type === 'error' ? 'bg-red-500 text-white' :
+                        globalToast.type === 'warning' ? 'bg-amber-500 text-white' :
+                        'bg-gray-800 text-white'
+                    }`}>
+                        {globalToast.type === 'error' && <span>❌</span>}
+                        {globalToast.type === 'warning' && <span>⚠️</span>}
+                        {globalToast.message}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

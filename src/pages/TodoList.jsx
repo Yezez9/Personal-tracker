@@ -354,18 +354,46 @@ function TaskItem({ task, courses, dispatch, expanded, onToggle, onEdit }) {
                             <span className={`text-sm font-medium cursor-pointer ${task.status === 'completed' ? 'line-through text-gray-400' : task.status === 'in_progress' ? 'text-amber-700 dark:text-amber-400' : 'dark:text-txt-dark'}`}>
                                 {task.title}
                             </span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium capitalize priority-${task.priority}`}>
-                                {task.priority}
-                            </span>
-                            {task.aiPriorityScore > 0 && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold ${task.aiPriorityScore >= 75 ? 'bg-red-500/10 text-red-500' : task.aiPriorityScore >= 50 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-500'}`}
-                                    title={task.aiPriorityReason}>
-                                    AI:{task.aiPriorityScore}
+                            
+                            {task._isScoring ? (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium bg-blue-500/10 text-blue-500 flex items-center gap-1 animate-pulse">
+                                    <span className="w-2 h-2 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></span> AI is evaluating...
                                 </span>
+                            ) : (
+                                <>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium capitalize priority-${task.priority}`}>
+                                        {task.priority}
+                                    </span>
+                                    
+                                    {task.taskType && task.taskType !== 'other' && (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium bg-indigo-500/10 text-indigo-500 capitalize">
+                                            {task.taskType.replace('_', ' ')}
+                                        </span>
+                                    )}
+
+                                    {task.detectedDifficulty && (
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium capitalize ${
+                                            task.detectedDifficulty === 'extreme' ? 'bg-red-500/10 text-red-500' :
+                                            task.detectedDifficulty === 'hard' ? 'bg-orange-500/10 text-orange-500' :
+                                            task.detectedDifficulty === 'medium' ? 'bg-yellow-500/10 text-yellow-500' :
+                                            task.detectedDifficulty === 'easy' ? 'bg-green-500/10 text-green-500' :
+                                            'bg-gray-500/10 text-gray-500'
+                                        }`} title={task.difficultyReason}>
+                                            Diff: {task.detectedDifficulty}
+                                        </span>
+                                    )}
+
+                                    {task.aiPriorityScore > 0 && (
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono font-bold ${task.aiPriorityScore >= 75 ? 'bg-red-500/10 text-red-500' : task.aiPriorityScore >= 50 ? 'bg-yellow-500/10 text-yellow-500' : 'bg-green-500/10 text-green-500'}`}
+                                            title={task.aiPriorityReason}>
+                                            AI:{task.aiPriorityScore}
+                                        </span>
+                                    )}
+                                </>
                             )}
-                            {task.coinReward && !task.coinsAwarded && (
+                            {!task._isScoring && task.coinReward && !task.coinsAwarded && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded-md font-medium bg-yellow-500/10 text-yellow-600 dark:text-yellow-400" title="Coin reward for completing">
-                                    🪙 {task.coinReward.baseCoins}
+                                    🪙 {task.coinReward.baseCoins || task.baseCoins || 0}
                                 </span>
                             )}
                             {task.coinsAwarded && (
@@ -419,10 +447,27 @@ function TaskItem({ task, courses, dispatch, expanded, onToggle, onEdit }) {
                         {task.description && <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{task.description}</p>}
 
                         {task.aiPriorityReason && (
-                            <div className="text-xs text-gray-400 italic mb-3 flex items-start gap-1.5">
+                            <div className="text-xs text-gray-400 italic mb-1.5 flex items-start gap-1.5">
                                 <Sparkles size={12} className="text-primary-light dark:text-primary-dark flex-shrink-0 mt-0.5" />
                                 {task.aiPriorityReason}
                             </div>
+                        )}
+                        
+                        {task.aiTip && (
+                            <div className="text-xs text-gray-400 italic mb-3 flex items-start gap-1.5">
+                                <Sparkles size={12} className="text-accent-light dark:text-accent-dark flex-shrink-0 mt-0.5" />
+                                <span className="font-medium text-gray-500 dark:text-gray-300">AI Tip:</span> {task.aiTip}
+                            </div>
+                        )}
+
+                        {!task._isScoring && task.detectedDifficulty && task.priority && (
+                            // Mismatch note
+                            (task.priority === 'low' && (task.detectedDifficulty === 'hard' || task.detectedDifficulty === 'extreme')) ? (
+                                <div className="text-xs text-orange-500 italic mb-3 bg-orange-500/10 p-2 rounded-lg">
+                                    <AlertTriangle size={12} className="inline mr-1" />
+                                    AI detected this as <b>{task.detectedDifficulty}</b>, but you marked it as <b>low priority</b>.
+                                </div>
+                            ) : null
                         )}
 
                         {task.subtodos?.length > 0 && (
